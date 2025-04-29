@@ -1,0 +1,14 @@
+{
+  "name": "popcorn",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.5.2",
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
