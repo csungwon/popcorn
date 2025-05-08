@@ -32,6 +32,16 @@ passport.use(
     )
 );
 
+router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+
+router.get(
+    "/google/callback",
+    passport.authenticate("google", {
+        failureRedirect: "/login",
+        successRedirect: "/",
+    })
+);
+
 // Serialize/deserialize the user id and store it in the session.
 passport.serializeUser((user, cb) => {
     process.nextTick(() => {
@@ -47,7 +57,7 @@ passport.deserializeUser((id: Types.ObjectId, cb) => {
 });
 
 router.post(
-    "/signin/email",
+    "/email",
     passport.authenticate("local", {
         successReturnToOrRedirect: "/",
         failureRedirect: "/login",
