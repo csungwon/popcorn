@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import { QueryOptions, Types } from "mongoose";
 import { User } from "../model";
 
 export const findUserByEmail = async (email: string) => {
@@ -26,8 +26,8 @@ export const createUser = async (
     return await newUser.save();
 };
 
-export const updateUserGoogleID = async (id: Types.ObjectId, googleID: string) => {
-    return await User.findByIdAndUpdate(id, { thirdPartyUniqueID: googleID, provider: "google" }).exec();
+export const updateUserGoogleID = async (id: Types.ObjectId, googleID: string, option?: QueryOptions) => {
+    return await User.findByIdAndUpdate(id, { thirdPartyUniqueID: googleID, provider: "google" }, option).exec();
 };
 
 export const createUserWithGoogleID = async (firstName: string, lastName: string, email: string, googleID: string) => {

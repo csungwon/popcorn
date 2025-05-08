@@ -39,6 +39,10 @@ describe("testing user DAO function", () => {
         expect(userDao.findUserByID).toBeDefined();
     });
 
+    it("should have updateUserGoogleID function", () => {
+        expect(userDao.updateUserGoogleID).toBeDefined();
+    });
+
     describe("createUser", () => {
         it("should create a user object", async () => {
             const createdUser = await userDao.createUser(
@@ -119,6 +123,29 @@ describe("testing user DAO function", () => {
         it("should return null when no user is found", async () => {
             const foundUser = await userDao.findUserByID(new Types.ObjectId());
             expect(foundUser).toBeNull();
+        });
+    });
+
+    describe("updateUserGoogleID", () => {
+        it("should update the user with googleID", async () => {
+            const savedUser2 = await userDao.createUser(
+                user2.firstName,
+                user2.lastName,
+                user2.email,
+                user2.password,
+                user2.salt
+            );
+            expect(savedUser2).toBeDefined();
+            expect(savedUser2).not.toBeNull();
+
+            const updatedUser = await userDao.updateUserGoogleID(
+                savedUser2._id,
+                "unique-google-id",
+                { new: true }
+            );
+            expect(updatedUser).toBeDefined();
+            expect(updatedUser).not.toBeNull();
+            expect(updatedUser?.thirdPartyUniqueID).toEqual("unique-google-id");
         });
     });
 });

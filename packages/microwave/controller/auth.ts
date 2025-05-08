@@ -48,7 +48,11 @@ export const GooglePassportStrategy = async (
             // if user exists and has no googleID, update the user with the googleID
             // NOTE: this is a one-way binding, if the user already has a googleID, we don't update it
             if (!user.thirdPartyUniqueID) {
-                await userDao.updateUserGoogleID(user._id, googleID);
+                const updatedUser = await userDao.updateUserGoogleID(user._id, googleID, {new: true});
+                if (!updatedUser) {
+                    return cb(null, user);
+                } 
+                return cb(null, updatedUser);
             }
             return cb(null, user);
         }
