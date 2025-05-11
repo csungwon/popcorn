@@ -12,7 +12,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   newArchEnabled: true,
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.sungwon.corea.popcorn'
+    bundleIdentifier: 'com.sungwon.corea.popcorn',
+    config: {
+      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+    }
   },
   android: {
     adaptiveIcon: {
@@ -40,6 +43,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-font',
     'expo-web-browser',
+    [
+      'expo-location',
+      {
+        "locationAlwaysAndWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to access your location",
+      }
+    ]
   ],
   experiments: {
     typedRoutes: true
