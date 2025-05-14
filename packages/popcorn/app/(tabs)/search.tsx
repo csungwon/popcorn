@@ -13,15 +13,48 @@ import {
   Keyboard,
   Text
 } from 'react-native'
+import { ScrollView } from 'react-native-gesture-handler'
 import MapView, { PROVIDER_GOOGLE, type Region } from 'react-native-maps'
 import BottomSheet, {
   BottomSheetView,
   BottomSheetTextInput
 } from '@gorhom/bottom-sheet'
+import StoreChip from '@/components/StoreChip'
+
+// mock data for nearby stores
+// in production, get these from API
+const nearbyStores = [
+  {
+    id: 'costco',
+    name: 'Costco',
+    logo: require('@/assets/images/storeLogo/costco.png')
+  },
+  {
+    id: 'safeway',
+    name: 'Safeway',
+    logo: require('@/assets/images/storeLogo/safeway.png')
+  },
+  {
+    id: 'traderjoes',
+    name: "Trader Joe's",
+    logo: require('@/assets/images/storeLogo/traderjoes.png')
+  },
+  {
+    id: 'hmart',
+    name: 'H Mart',
+    logo: require('@/assets/images/storeLogo/hmart.png')
+  },
+  {
+    id: 'sprouts',
+    name: 'Sprouts',
+    logo: require('@/assets/images/storeLogo/sprouts.png')
+  }
+]
 
 export default function SearchScreen() {
   const [region, setRegion] = useState<Region>()
   const [search, setSearch] = useState<string>('')
+  const [selectedStore, setSelectedStore] = useState<string | null>(null)
   const [isSearchInputFocused, setIsSearchInputFocused] =
     useState<boolean>(false)
 
@@ -104,6 +137,31 @@ export default function SearchScreen() {
                 </TouchableOpacity>
               )}
             </View>
+            <ScrollView
+              horizontal
+              contentContainerStyle={{
+                alignItems: 'flex-start',
+                gap: 8,
+                marginTop: 16,
+              }}
+              style={{ flexGrow: 0}}
+            >
+              {nearbyStores.map((store) => (
+                <TouchableOpacity
+                  key={store.id}
+                  onPress={() => {
+                    setSelectedStore(store.id)
+                  }}
+                >
+                  <StoreChip
+                    key={store.id}
+                    name={store.name}
+                    logo={store.logo}
+                    isActive={selectedStore === store.id}
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </BottomSheetView>
         </BottomSheet>
     </View>
