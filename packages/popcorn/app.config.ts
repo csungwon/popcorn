@@ -46,7 +46,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-location',
       {
-        "locationAlwaysAndWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to access your location",
+        locationAlwaysAndWhenInUseUsageDescription:
+          'Allow $(PRODUCT_NAME) to access your location'
+      }
+    ],
+    [
+      '@react-native-google-signin/google-signin',
+      {
+        iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME
       }
     ]
   ],
