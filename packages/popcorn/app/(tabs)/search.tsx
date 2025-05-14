@@ -51,6 +51,21 @@ const nearbyStores = [
   }
 ]
 
+const recentSearches = [
+  {
+    search: 'Banana',
+    searchedAt: '2023-10-01T12:00:00Z'
+  },
+  {
+    search: 'Apple',
+    searchedAt: '2023-10-01T13:00:00Z'
+  },
+  {
+    search: 'Orange',
+    searchedAt: '2023-10-01T15:00:00Z'
+  }
+]
+
 export default function SearchScreen() {
   const [region, setRegion] = useState<Region>()
   const [search, setSearch] = useState<string>('')
@@ -81,15 +96,15 @@ export default function SearchScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-    <View style={[styles.container]}>
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={[styles.map, { bottom: tabBarHeight }]}
-        showsUserLocation
-        mapType="standard"
-        showsMyLocationButton
-        initialRegion={region}
-      />
+      <View style={[styles.container]}>
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={[styles.map, { bottom: tabBarHeight }]}
+          showsUserLocation
+          mapType="standard"
+          showsMyLocationButton
+          initialRegion={region}
+        />
         <BottomSheet
           style={styles.bottomSheetShadow}
           handleIndicatorStyle={{
@@ -162,9 +177,27 @@ export default function SearchScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            {recentSearches.length > 0 && isSearchInputFocused && !search.length &&(
+              <View style={{ marginTop: 16 }}>
+                <Text>Recent Searches</Text>
+                <View style={{ marginTop: 10}}>
+                  {recentSearches
+                    .slice()
+                    .sort((s1, s2) => new Date(s1.searchedAt).getTime() - new Date(s2.searchedAt).getTime())
+                    .map(( { search }) => (
+                      <TouchableOpacity key={search} onPress={() => setSearch(search)}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 5}}>
+                          <SymbolView name="clock.arrow.circlepath" tintColor="#707070" type='monochrome'/>
+                          <Text>{search}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                </View>
+              </View>
+            )}
           </BottomSheetView>
         </BottomSheet>
-    </View>
+      </View>
     </TouchableWithoutFeedback>
   )
 }
