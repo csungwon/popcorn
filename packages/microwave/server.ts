@@ -1,6 +1,5 @@
 import express from "express";
 import cookieParser from "cookie-parser";
-import session from "express-session";
 import dotenv from "dotenv";
 import passport from "passport";
 
@@ -42,24 +41,7 @@ connectMongoDB()
         console.error("MongoDB connection error:", err);
     });
 
-app.use(
-    session({
-        secret: process.env.SESSION_SECRET || "development",
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            httpOnly: true,
-            secure: true, // requires HTTPS
-            sameSite: "lax",
-            maxAge: 1000 * 60 * 60 * 24, // 1 day
-        },
-        // store: new RedisStore({{}) // Uncomment this line to use Redis for session storage
-        // NOTE: RedisStore requires additional setup and configuration
-    })
-);
-
 app.use(passport.initialize());
-app.use(passport.session());
 
 // ! NOTE: TO BE REMOVED
 app.get("/", (req, res) => {
