@@ -1,11 +1,11 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Link } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function HomeScreen() {
   return (
@@ -17,9 +17,12 @@ export default function HomeScreen() {
           style={styles.reactLogo}
         />
       }>
-      {/* Temp link to onboarding screen */}
-      {/* TODO: show onboarding screen if it's the first time user opens the app */}
-      <Link href="/onboarding" style={{ color: 'red'}}>Go to Onboarding screen</Link>
+      {/* [TODO] Remove once ready to ship. This is for clearing AsyncStorage, otherwise we need to uninstall the app and reinstall */}
+      <TouchableOpacity onPress={() => {
+        AsyncStorage.clear();
+      }}>
+        <Text>Clear AsyncStorage</Text>
+      </TouchableOpacity>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />

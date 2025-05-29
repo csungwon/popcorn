@@ -12,6 +12,7 @@ import { useColorScheme } from '@/hooks/useColorScheme'
 import 'expo-dev-client'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { OnboardingStatusProvider } from '@/context/OnboardingStatusContext'
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()
@@ -27,13 +28,18 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <SafeAreaProvider>
-        <GestureHandlerRootView>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-        </GestureHandlerRootView>
+        <OnboardingStatusProvider>
+          <GestureHandlerRootView>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="onboarding"
+                options={{ headerShown: false, animation: 'none' }}
+              />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+          </GestureHandlerRootView>
+        </OnboardingStatusProvider>
       </SafeAreaProvider>
       <StatusBar style="auto" />
     </ThemeProvider>

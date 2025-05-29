@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
   Dimensions,
@@ -8,6 +9,7 @@ import {
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useOnboardingStatus } from '@/context/OnboardingStatusContext'
 
 const pages = [
   {
@@ -33,6 +35,9 @@ const DEVICE_HEIGHT = Dimensions.get('window').height
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets()
   const [currentPage, setCurrentPage] = useState(0)
+  const router = useRouter()
+  const { completeOnboarding } = useOnboardingStatus()
+
   return (
     <View>
       <FlatList
@@ -41,8 +46,8 @@ export default function OnboardingScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onViewableItemsChanged={({ viewableItems }) => {
-          const currentIndex = viewableItems[0]?.index || 0;
-          setCurrentPage(currentIndex);
+          const currentIndex = viewableItems[0]?.index || 0
+          setCurrentPage(currentIndex)
         }}
         renderItem={({ item, index }) => (
           <View
@@ -94,7 +99,15 @@ export default function OnboardingScreen() {
         )}
         keyExtractor={(item, index) => index.toString()}
       />
-      <View style={{ position: 'absolute', bottom: 20, left: 16, right: 16, alignItems: 'center'}}>
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 20,
+          left: 16,
+          right: 16,
+          alignItems: 'center'
+        }}
+      >
         <View
           style={{
             flexDirection: 'row',
@@ -119,8 +132,9 @@ export default function OnboardingScreen() {
           })}
         </View>
         <TouchableOpacity
-          onPress={() => {
-            alert('Get started')
+          onPress={async () => {
+            await completeOnboarding()
+            router.replace('/(tabs)')
           }}
           style={{
             backgroundColor: '#FF860D',
