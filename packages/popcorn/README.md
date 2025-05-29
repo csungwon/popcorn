@@ -26,6 +26,11 @@ You'll need Xcode to build iOS applications.
       ```
     - A software update pop-up will appear. Click **Install** and agree to the terms.
 
+4.  Install iOS components (Only if you plan to use simulator):
+    - Go to `File` > `Settings` or press `cmd` + `,`
+    - Click on **Components** tab.
+    - Click **Get** button for iOS <version>
+
 ### 2. Node.js and pnpm
 
 Expo requires Node.js and `pnpm` to manage project dependencies.
