@@ -1,11 +1,12 @@
 import bcrypt from "bcrypt";
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { Profile, VerifyCallback } from "passport-google-oauth20";
 import { VerifyFunction } from "passport-local";
 
 import { CRYPTO_PARAM, PASSWORD_RULE } from "../const";
 import { userDao } from "../db/dao";
 import { CryptoUtils } from "../util";
+import { generateToken } from "../util/jwt";
 
 export const LocalPassportStrategy: VerifyFunction = async (email, password, cb) => {
     try {
@@ -48,10 +49,10 @@ export const GooglePassportStrategy = async (
             // if user exists and has no googleID, update the user with the googleID
             // NOTE: this is a one-way binding, if the user already has a googleID, we don't update it
             if (!user.thirdPartyUniqueID) {
-                const updatedUser = await userDao.updateUserGoogleID(user._id, googleID, {new: true});
+                const updatedUser = await userDao.updateUserGoogleID(user._id, googleID, { new: true });
                 if (!updatedUser) {
                     return cb(null, user);
-                } 
+                }
                 return cb(null, updatedUser);
             }
             return cb(null, user);
@@ -72,7 +73,7 @@ export const GooglePassportStrategy = async (
     }
 };
 
-export const SignUpController = async (req: Request, res: Response, next: NextFunction) => {
+export const SignUpController = async (req: Request, res: Response) => {
     if (!req.body.firstName || !req.body.lastName || !req.body.email || !req.body.password) {
         return res.status(400).json({ message: "missing required fields" });
     }
@@ -93,17 +94,10 @@ export const SignUpController = async (req: Request, res: Response, next: NextFu
             Buffer.from(salt, "utf-8")
         );
 
-        req.login(
-            {
-                _id: newUser._id,
-                email: req.body.email,
-            },
-            (err) => {
-                if (err) return next(err);
-                // send back the uesr information
-                return res.status(200).json({ message: "user created successfully" });
-            }
-        );
+        const jwtToken = await generateToken(newUser.email, "1d");
+        return res.status(201).json({
+            token: jwtToken,
+        });
     } catch (err) {
         console.error("error while creating user with err:", err);
         return res.status(500).json({ message: "error while creating user" });

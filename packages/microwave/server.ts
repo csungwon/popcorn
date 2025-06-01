@@ -2,14 +2,14 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import passport from "passport";
+import { checkEnvVariables } from "./util/envChecker";
 
 // DB
 import { connectMongoDB } from "./db";
 
-// Routers
-import router from "./router";
-
 dotenv.config();
+
+checkEnvVariables();
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -44,10 +44,12 @@ connectMongoDB()
 app.use(passport.initialize());
 
 // ! NOTE: TO BE REMOVED
-app.get("/", (req, res) => {
-    res.send("Hello World!");
+app.get("/imalive", (req, res) => {
+    res.send("OK");
 });
 
+// Routers
+import router from "./router";
 app.use("/", router);
 
 app.listen(PORT, () => {

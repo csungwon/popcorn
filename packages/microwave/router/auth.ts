@@ -51,7 +51,7 @@ passport.use(
             clientID: process.env.GOOGLE_CLIENT_ID || "",
             clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
             callbackURL: process.env.GOOGLE_CALLBACK_URL || "",
-        },
+        }, 
         AuthController.GooglePassportStrategy
     )
 );
@@ -97,7 +97,7 @@ router.post("/signout", (req, res, next) => {
 });
 
 router.post("/signup", (req, res, next) => {
-    AuthController.SignUpController(req, res, next).catch(next);
+    AuthController.SignUpController(req, res).catch(next);
 });
 
 export default router;
