@@ -1,25 +1,33 @@
-import { SymbolView } from 'expo-symbols'
+import StoreChip from '@/components/StoreChip'
+import GorhomBottomSheet, {
+  BottomSheetTextInput,
+  BottomSheetView
+} from '@gorhom/bottom-sheet'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
+import clsx from 'clsx'
 import {
   getCurrentPositionAsync,
   requestForegroundPermissionsAsync
 } from 'expo-location'
+import { SymbolView } from 'expo-symbols'
+import { cssInterop } from 'nativewind'
 import { useEffect, useState } from 'react'
 import {
-  View,
-  StyleSheet,
+  Keyboard,
+  Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  Keyboard,
-  Text
+  View
 } from 'react-native'
 import { ScrollView } from 'react-native-gesture-handler'
-import MapView, { PROVIDER_GOOGLE, type Region } from 'react-native-maps'
-import BottomSheet, {
-  BottomSheetView,
-  BottomSheetTextInput
-} from '@gorhom/bottom-sheet'
-import StoreChip from '@/components/StoreChip'
+import GoogleMapView, { PROVIDER_GOOGLE, type Region } from 'react-native-maps'
+
+// Configure nativewind to work with react-native-maps and gorhom/bottom-sheet
+const MapView = cssInterop(GoogleMapView, { className: 'style' })
+const BottomSheet = cssInterop(GorhomBottomSheet, {
+  className: 'style',
+  handleIndicatorClassName: 'handleIndicatorStyle'
+})
 
 // mock data for nearby stores
 // in production, get these from API
@@ -96,70 +104,65 @@ export default function SearchScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={[styles.container]}>
+      <View className="w-full h-full">
         <MapView
           provider={PROVIDER_GOOGLE}
-          style={[styles.map, { bottom: tabBarHeight }]}
+          className="absolute inset-0"
           showsUserLocation
           mapType="standard"
           showsMyLocationButton
           initialRegion={region}
         />
         <BottomSheet
-          style={styles.bottomSheetShadow}
-          handleIndicatorStyle={{
-            backgroundColor: '#b4b4b4',
-            width: 135
-          }}
+          className="rounded-t-2xl shadow-bottomSheet"
+          handleIndicatorClassName="w-[135] h-[5px] bg-gray-300"
           index={1}
           bottomInset={tabBarHeight}
           snapPoints={['40%']}
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
         >
-          <BottomSheetView
-            style={{ flex: 1, paddingHorizontal: 16, marginTop: 16}}
-          >
+          <BottomSheetView className="px-4 pt-2">
+            {/* Search Input */}
             <View
-              style={[
-                styles.searchInputContainer,
-                { backgroundColor: isSearchInputFocused ? '#e8e8e8' : 'white' }
-              ]}
+              className={clsx(
+                'flex flex-row items-center border border-black/20 rounded-full overflow-hidden',
+                isSearchInputFocused && 'bg-gray-100'
+              )}
             >
-              <SymbolView
-                name="magnifyingglass"
-                style={styles.searchIcon}
-                tintColor="#3c3c4399"
-                type="monochrome"
-              />
+              <View className="absolute left-2">
+                <SymbolView
+                  name="magnifyingglass"
+                  tintColor="#3c3c4399"
+                  type="monochrome"
+                />
+              </View>
               <BottomSheetTextInput
                 placeholder="Search"
-                placeholderTextColor="rgba(60, 60, 67, .6)"
-                style={styles.searchInput}
+                className="p-2 pl-9 flex-1 text-lg leading-tight placeholder:text-gray-800/60"
                 value={search}
                 onChangeText={setSearch}
                 onFocus={() => setIsSearchInputFocused(true)}
                 onBlur={() => setIsSearchInputFocused(false)}
               />
               {search.length > 0 && (
-                <TouchableOpacity onPress={() => setSearch('')}>
+                <TouchableOpacity
+                  onPress={() => setSearch('')}
+                  className="pr-1.5 self-stretch flex justify-center"
+                >
                   <SymbolView
                     name="xmark.circle.fill"
-                    style={styles.clearIcon}
                     tintColor="#3c3c4399"
                     type="monochrome"
                   />
                 </TouchableOpacity>
               )}
             </View>
+            {/* Nearby Stores */}
             <ScrollView
               horizontal
-              contentContainerStyle={{
-                alignItems: 'flex-start',
-                gap: 8,
-                marginTop: 16,
-              }}
-              style={{ flexGrow: 0}}
+              contentContainerClassName="items-start gap-2 mt-4"
+              showsHorizontalScrollIndicator={false}
             >
               {nearbyStores.map((store) => (
                 <TouchableOpacity
@@ -177,70 +180,43 @@ export default function SearchScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            {recentSearches.length > 0 && isSearchInputFocused && !search.length &&(
-              <View style={{ marginTop: 16 }}>
-                <Text>Recent Searches</Text>
-                <View style={{ marginTop: 10}}>
-                  {recentSearches
-                    .slice()
-                    .sort((s1, s2) => new Date(s1.searchedAt).getTime() - new Date(s2.searchedAt).getTime())
-                    .map(( { search }) => (
-                      <TouchableOpacity key={search} onPress={() => setSearch(search)}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 5}}>
-                          <SymbolView name="clock.arrow.circlepath" tintColor="#707070" type='monochrome'/>
-                          <Text>{search}</Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
+            {/* Recent Searches */}
+            {recentSearches.length > 0 &&
+              isSearchInputFocused &&
+              !search.length && (
+                <View className="mt-4">
+                  <Text className="text-lg">Recent Searches</Text>
+                  <View className="mt-2">
+                    {recentSearches
+                      .slice()
+                      .sort(
+                        (s1, s2) =>
+                          new Date(s1.searchedAt).getTime() -
+                          new Date(s2.searchedAt).getTime()
+                      )
+                      .map(({ search }) => (
+                        <TouchableOpacity
+                          key={search}
+                          onPress={() => setSearch(search)}
+                        >
+                          <View className="flex flex-row items-center gap-1 py-1">
+                            <SymbolView
+                              name="clock.arrow.circlepath"
+                              tintColor="#707070"
+                              type="monochrome"
+                            />
+                            <Text className="text-lg text-gray-800">
+                              {search}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                  </View>
                 </View>
-              </View>
-            )}
+              )}
           </BottomSheetView>
         </BottomSheet>
       </View>
     </TouchableWithoutFeedback>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject
-  },
-  searchInputContainer: {
-    borderRadius: 9999,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
-    fontSize: 32,
-    height: 46,
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderColor: 'rgba(0, 0, 0, 0.2)',
-    borderWidth: 1
-  },
-  searchInput: {
-    fontSize: 17,
-    lineHeight: 22,
-    flex: 1
-  },
-  clearIcon: {
-    marginLeft: 8
-  },
-  searchIcon: {
-    marginRight: 8
-  },
-  bottomSheetShadow: {
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 12
-    },
-    shadowOpacity: 0.58,
-    shadowRadius: 16.0,
-
-    elevation: 24
-  }
-})

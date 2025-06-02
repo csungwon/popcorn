@@ -1,15 +1,17 @@
+import { useOnboardingStatus } from '@/context/OnboardingStatusContext'
+import clsx from 'clsx'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
   Dimensions,
   FlatList,
   Image,
+  SafeAreaView,
   Text,
   TouchableOpacity,
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useOnboardingStatus } from '@/context/OnboardingStatusContext'
 
 const pages = [
   {
@@ -39,7 +41,7 @@ export default function OnboardingScreen() {
   const { completeOnboarding } = useOnboardingStatus()
 
   return (
-    <View>
+    <View className="bg-white w-full h-full"><SafeAreaView>
       <FlatList
         data={pages}
         horizontal
@@ -49,84 +51,39 @@ export default function OnboardingScreen() {
           const currentIndex = viewableItems[0]?.index || 0
           setCurrentPage(currentIndex)
         }}
-        renderItem={({ item, index }) => (
+        renderItem={({ item }) => (
           <View
             style={{
               width: DEVICE_WIDTH,
-              height: DEVICE_HEIGHT - insets.top - insets.bottom,
-              overflow: 'hidden'
+              height: DEVICE_HEIGHT - insets.top - insets.bottom - 24
             }}
           >
-            <View style={{ flex: 1, justifyContent: 'center' }}>
-              <Image
-                source={item.image}
-                style={{ width: '100%', resizeMode: 'cover' }}
-              />
+            <View className="justify-center h-[400]">
+              <Image className="w-full bg-cover" source={item.image} />
             </View>
-            <View
-              style={{
-                height: 350,
-                paddingHorizontal: 16,
-                paddingVertical: 22,
-                flex: 0
-              }}
-            >
-              <View style={{ flex: 0 }}>
-                <Text
-                  style={{ fontSize: 28, lineHeight: 34, fontWeight: 'bold' }}
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    lineHeight: 21,
-                    color: '#696969',
-                    marginTop: 8
-                  }}
-                >
+            <View className="px-4 mt-4">
+              <View>
+                <Text className="font-bold text-3xl ">{item.title}</Text>
+                <Text className="text-xl text-gray-500 mt-2">
                   {item.subtitle}
                 </Text>
               </View>
-              <View
-                style={{
-                  flex: 1,
-                  justifyContent: 'flex-end'
-                }}
-              ></View>
             </View>
           </View>
         )}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={(_, index) => index.toString()}
       />
-      <View
-        style={{
-          position: 'absolute',
-          bottom: 20,
-          left: 16,
-          right: 16,
-          alignItems: 'center'
-        }}
-      >
-        <View
-          style={{
-            flexDirection: 'row',
-            width: 60,
-            gap: 10,
-            marginBottom: 14
-          }}
-        >
+      <View className="absolute bottom-5 left-4 right-4 items-center">
+        {/* Onboarding Step Indicator */}
+        <View className="flex-row gap-2.5 mb-3">
           {pages.map((_, index) => {
             return (
               <View
                 key={index}
-                style={{
-                  width: index === currentPage ? 28 : 6,
-                  height: index === currentPage ? 4 : 6,
-                  borderRadius: index === currentPage ? 2 : 3,
-                  backgroundColor: '#d9d9d9',
-                  opacity: 1
-                }}
+                className={clsx(
+                  'h-1.5 rounded-full bg-gray-200',
+                  index === currentPage ? 'w-7' : 'w-1.5'
+                )}
               ></View>
             )
           })}
@@ -136,26 +93,13 @@ export default function OnboardingScreen() {
             await completeOnboarding()
             router.replace('/(tabs)')
           }}
-          style={{
-            backgroundColor: '#FF860D',
-            paddingVertical: 14,
-            width: '100%',
-            borderRadius: 25
-          }}
+          className="bg-orange-500 w-full rounded-full py-4"
         >
-          <Text
-            style={{
-              fontSize: 17,
-              lineHeight: 21,
-              fontWeight: 'semibold',
-              textAlign: 'center',
-              color: 'white'
-            }}
-          >
+          <Text className="text-lg font-semibold text-center text-white">
             Get Started
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView></View>
   )
 }

@@ -9,11 +9,11 @@ import { StatusBar } from 'expo-status-bar'
 import 'react-native-reanimated'
 import '../global.css'
 
+import { OnboardingStatusProvider } from '@/context/OnboardingStatusContext'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import 'expo-dev-client'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { OnboardingStatusProvider } from '@/context/OnboardingStatusContext'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()

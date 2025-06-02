@@ -1,5 +1,6 @@
+import clsx from 'clsx'
 import { Image, ImageSource } from 'expo-image'
-import { StyleSheet, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 
 type StoreChipProps = {
   isActive?: boolean
@@ -9,33 +10,14 @@ type StoreChipProps = {
 
 export default function StoreChip({ isActive, name, logo }: StoreChipProps) {
   return (
-    <View style={[ styles.container, isActive && { backgroundColor: '#ff860d'}]}>
-      <Image source={logo} style={styles.logo} />
-      <Text style={styles.name}>{name}</Text>
+    <View
+      className={clsx(
+        'flex flex-row py-1.5 pl-2 pr-2.5 rounded-full gap-1',
+        isActive ? 'bg-orange-500' : 'bg-gray-100'
+      )}
+    >
+      <Image source={logo} className="w-[22px] h-[22px] rounded-full bg-white" />
+      <Text className="text-black text-sm">{name}</Text>
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    display: 'flex',
-    flexDirection: 'row',
-    backgroundColor: '#e8e8e8',
-    paddingLeft: 8,
-    paddingRight: 10,
-    paddingVertical: 6,
-    borderRadius: 9999,
-    gap: 4
-  },
-  logo: {
-    width: 22,
-    height: 22,
-    borderRadius: '50%',
-    backgroundColor: 'white',
-  },
-  name: {
-    color: '#000',
-    fontSize: 15,
-    lineHeight: 20
-  }
-})

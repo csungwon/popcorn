@@ -1,11 +1,8 @@
-import { StyleSheet, Text, View, TouchableOpacity, Button } from 'react-native'
-import {
-  GoogleSignin,
-  User
-} from '@react-native-google-signin/google-signin'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useEffect, useState } from 'react'
+import { GoogleSignin, User } from '@react-native-google-signin/google-signin'
 import { Image } from 'expo-image'
+import { useEffect, useState } from 'react'
+import { Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function SignInScreen() {
@@ -14,7 +11,7 @@ export default function SignInScreen() {
   useEffect(() => {
     GoogleSignin.configure({
       iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
     })
   }, [])
 
@@ -42,74 +39,45 @@ export default function SignInScreen() {
 
   console.log(userInfo)
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex flex-1 px-5 bg-white justify-center">
       {userInfo ? (
-        <View
-          style={{
-            gap: 16,
-            flexDirection: 'row',
-            justifyContent: 'center',
-          }}
-        >
-          <Image
-            source={{ uri: userInfo.user?.photo }}
-            style={{ width: 80, height: 80, borderRadius: '50%' }}
-          />
-          <View style={{ flex: 1, gap: 8, justifyContent: 'center' }}>
-            <Text style={{ fontSize: 24, fontWeight: 500 }}>
+        <View className="flex flex-row gap-4 justify-center">
+          {userInfo.user?.photo && (
+            <Image
+              source={{ uri: userInfo.user.photo }}
+              className="w-20 h-20 rounded-full"
+            />
+          )}
+          <View className="flex-1 gap-2 justify-center">
+            <Text className="text-2xl font-medium">
               {userInfo.user.name}
             </Text>
-            <Text style={{ fontSize: 16 }}>{userInfo.user.email}</Text>
+            <Text className="text-base">{userInfo.user.email}</Text>
           </View>
         </View>
       ) : (
-        <Text style={{ fontSize: 24, textAlign: 'center' }}>
+        <Text className="text-2xl text-center">
           Please sign in to see user information
         </Text>
       )}
-      <TouchableOpacity style={styles.button} onPress={handleSignIn}>
+      <TouchableOpacity
+        className="mt-20 px-4 py-3 rounded-full bg-gray-100 w-full flex flex-row justify-center items-center"
+        onPress={handleSignIn}
+      >
         <Image
           source={require('@/assets/images/google-icon.png')}
-          style={styles.googleIcon}
+          className="w-6 h-6 absolute left-4"
         />
-        <Text style={styles.buttonLabel}>Continue with Google</Text>
+        <Text className="text-xl">Continue with Google</Text>
       </TouchableOpacity>
-      <Button
-        title="Clear Local Storage"
+      <TouchableOpacity
         onPress={() => {
           AsyncStorage.removeItem('@user')
           setUserInfo(null)
         }}
-      />
+      >
+        <Text className="text-xl text-blue-600 p-4 text-center">Sign Out</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-  },
-  button: {
-    marginTop: 100,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-  },
-  buttonLabel: {
-    fontSize: 20,
-    textAlign: 'center',
-  },
-  googleIcon: {
-    width: 24,
-    height: 24,
-    position: 'absolute',
-    left: 16,
-  },
-})
