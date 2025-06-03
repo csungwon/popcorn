@@ -12,8 +12,13 @@ import '../global.css'
 import { OnboardingStatusProvider } from '@/context/OnboardingStatusContext'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import 'expo-dev-client'
+import { Image } from 'expo-image'
+import { cssInterop } from 'react-native-css-interop'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+
+// allow tailwindcss for Image component
+cssInterop(Image, { className: 'style' })
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()
@@ -37,6 +42,7 @@ export default function RootLayout() {
                 name="onboarding"
                 options={{ headerShown: false, animation: 'none' }}
               />
+              <Stack.Screen name="signin" options={{ headerShown: false }} />
               <Stack.Screen name="+not-found" />
             </Stack>
           </GestureHandlerRootView>

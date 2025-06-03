@@ -1,2 +1,6 @@
 packages:
-  - 'packages/*'
+  - packages/*
+onlyBuiltDependencies:
+  - bcrypt
+ignoredBuiltDependencies:
+  - unrs-resolver

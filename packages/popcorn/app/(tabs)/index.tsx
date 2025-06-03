@@ -1,72 +1,40 @@
-import { Image as ExpoImage } from 'expo-image'
-import { cssInterop } from 'nativewind'
-import { Platform, Text, TouchableOpacity } from 'react-native'
+import { TextInput as RNTextInput, Text, View } from 'react-native'
 
-import { HelloWave } from '@/components/HelloWave'
-import ParallaxScrollView from '@/components/ParallaxScrollView'
-import { ThemedText } from '@/components/ThemedText'
-import { ThemedView } from '@/components/ThemedView'
+import Button from '@/components/Button'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useRouter } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import TextInput from '../../components/TextInput'
 
-const Image = cssInterop(ExpoImage, { className: 'style' })
 export default function HomeScreen() {
+  const router = useRouter()
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          className="absolute bottom-0 left-0 w-[290px] h-[178px]"
+    <SafeAreaView className="px-4 py-8 absolute inset-0 bg-white">
+      <Text className="text-5xl">Dev Page</Text>
+      <View className="flex flex-col gap-4 mt-8">
+        <Button
+          type="secondary"
+          label="Reset onboarding"
+          onPress={() => {
+            AsyncStorage.clear()
+            router.replace('/onboarding')
+          }}
         />
-      }
-    >
-      {/* [TODO] Remove once ready to ship. This is for clearing AsyncStorage, otherwise we need to uninstall the app and reinstall */}
-      <TouchableOpacity
-        onPress={() => {
-          AsyncStorage.clear()
-        }}
-      >
-        <Text>Clear AsyncStorage</Text>
-      </TouchableOpacity>
-      <ThemedView className="flex-row items-center gap-2">
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView className="gap-2 mb-2">
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText>{' '}
-          to see changes. Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView className="gap-2 mb-2">
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView className="gap-2 mb-2">
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">
-            npm run reset-project
-          </ThemedText>{' '}
-          to get a fresh <ThemedText type="defaultSemiBold">app</ThemedText>{' '}
-          directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <Button
+          type="secondary"
+          label="Go to Sign in page"
+          onPress={() => {
+            router.push('/signin')
+          }}
+        />
+        <View>
+          <Text>Custom Text Input</Text>
+          <TextInput placeholder='Search with Google' />
+          <Text>Native Text Input</Text>
+          <RNTextInput className='border border-gray-500 rounded-full py-3 px-5 focus:border-orange-500' placeholder="Search with Google"/>
+        </View>
+      </View>
+    </SafeAreaView>
   )
 }
