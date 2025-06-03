@@ -1,12 +1,15 @@
 import express from "express";
 import { Types } from "mongoose";
 import passport from "passport";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { ExtractJwt, Strategy as JwtStrategy } from "passport-jwt";
 import { Strategy as LocalStrategy } from "passport-local";
 
-import { AuthController } from "../controller";
+import { AuthController, jwtController } from "../controller";
 import { userDao } from "../db/dao";
+import { googleAuthMiddleware } from "../middleware";
+import { asyncHandler } from "../util/asyncHandler";
+import { generateToken } from "../util/jwt";
+import { User } from "../db/model/user";
 
 const router = express.Router();
 
@@ -44,26 +47,10 @@ passport.use(
     )
 );
 
-// Authorization method for Google
-passport.use(
-    new GoogleStrategy(
-        {
-            clientID: process.env.GOOGLE_CLIENT_ID || "",
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-            callbackURL: process.env.GOOGLE_CALLBACK_URL || "",
-        }, 
-        AuthController.GooglePassportStrategy
-    )
-);
-
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-
 router.get(
-    "/google/callback",
-    passport.authenticate("google", {
-        failureRedirect: "/login",
-        successRedirect: "/",
-    })
+    "/google",
+    asyncHandler(googleAuthMiddleware.VerifyGoogleToken),
+    asyncHandler(AuthController.CheckUserFromGoogle)
 );
 
 // Serialize/deserialize the user id and store it in the session.
@@ -80,14 +67,29 @@ passport.deserializeUser((id: Types.ObjectId, cb) => {
     });
 });
 
-router.post(
-    "/default",
-    passport.authenticate("local", {
-        successReturnToOrRedirect: "/",
-        failureRedirect: "/login",
-        failureMessage: true,
-    })
-);
+router.post("/default", async (req, res) => {
+    passport.authenticate(
+        "local",
+        { session: false },
+        async (err: Error | null, user: User, info?: { message?: string }) => {
+            if (err) {
+                return res.status(500).json({ message: "Internal server error" });
+            }
+            if (!user) {
+                return res.status(401).json({ message: info?.message || "Invalid credentials" });
+            }
+
+            const jwtToken = await generateToken(user.email, "1d");
+
+            return res.status(200).json({
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                token: jwtToken,
+            });
+        }
+    )(req, res);
+});
 
 router.post("/signout", (req, res, next) => {
     req.logout((err) => {
@@ -96,8 +98,13 @@ router.post("/signout", (req, res, next) => {
     });
 });
 
-router.post("/signup", (req, res, next) => {
-    AuthController.SignUpController(req, res).catch(next);
-});
+router.post("/signup", asyncHandler(AuthController.SignUpController));
+
+router.get("/check", jwtController.jwtAuthenticator, (req, res) => {
+    res.status(200).json({
+        message: "Authenticated",
+        userEmail: req.user?.email,
+    });
+})
 
 export default router;

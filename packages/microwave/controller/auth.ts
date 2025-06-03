@@ -1,6 +1,5 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import { Profile, VerifyCallback } from "passport-google-oauth20";
 import { VerifyFunction } from "passport-local";
 
 import { CRYPTO_PARAM, PASSWORD_RULE } from "../const";
@@ -29,57 +28,73 @@ export const LocalPassportStrategy: VerifyFunction = async (email, password, cb)
     }
 };
 
-export const GooglePassportStrategy = async (
-    _accessToken: string,
-    _refreshToken: string,
-    profile: Profile,
-    cb: VerifyCallback
-) => {
-    const googleID = profile.id;
-    const googleEmail = profile.emails?.[0].value;
-
-    if (!googleEmail) {
-        return cb(new Error("Google email not found"));
-    }
-
+export const CheckUserFromGoogle = async (req: Request, res: Response) => {
     try {
+        const token = await generateToken(res.locals.userEmail, "1d");
         // check if user already exists by email
-        const user = await userDao.findUserByEmail(googleEmail);
+        const user = await userDao.findUserByEmail(res.locals.userEmail);
         if (user) {
             // if user exists and has no googleID, update the user with the googleID
             // NOTE: this is a one-way binding, if the user already has a googleID, we don't update it
             if (!user.thirdPartyUniqueID) {
-                const updatedUser = await userDao.updateUserGoogleID(user._id, googleID, { new: true });
+                const updatedUser = await userDao.updateUserGoogleID(user._id, res.locals.googleID, { new: true });
                 if (!updatedUser) {
-                    return cb(null, user);
+                    res.status(500).json({ message: "error while updating user with googleID" });
+                    return;
                 }
-                return cb(null, updatedUser);
+                res.status(200).json({
+                    firstName: updatedUser.firstName,
+                    lastName: updatedUser.lastName,
+                    email: updatedUser.email,
+                    token: token,
+                });
+                return;
             }
-            return cb(null, user);
+            res.status(200).json({
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                token: token,
+            });
+            return;
         }
 
         // if user does not exist, create a new user
         const savedUser = await userDao.createUserWithGoogleID(
-            profile.name?.givenName || "",
-            profile.name?.familyName || "",
-            googleEmail,
-            googleID
+            res.locals.firstName,
+            res.locals.lastName,
+            res.locals.userEmail,
+            res.locals.googleID
         );
 
-        return cb(null, savedUser);
+        if (!savedUser) {
+            res.status(500).json({ message: "error while creating user with googleID" });
+            return;
+        }
+
+        res.status(201).json({
+            firstName: savedUser.firstName,
+            lastName: savedUser.lastName,
+            email: savedUser.email,
+            token: token,
+        });
+        return;
     } catch (error) {
         console.error("error while creating user via google oauth:", error);
-        return cb(error);
+        res.status(500).json({ message: "error while creating user via google" });
+        return;
     }
 };
 
 export const SignUpController = async (req: Request, res: Response) => {
     if (!req.body.firstName || !req.body.lastName || !req.body.email || !req.body.password) {
-        return res.status(400).json({ message: "missing required fields" });
+        res.status(400).json({ message: "missing required fields" });
+        return;
     }
 
     if (req.body.password.length > PASSWORD_RULE.MAX_LENGTH || req.body.password.length < PASSWORD_RULE.MIN_LENGTH) {
-        return res.status(400).json({ message: "password length must be between 8 and 20 characters" });
+        res.status(400).json({ message: "password length must be between 8 and 20 characters" });
+        return;
     }
 
     try {
@@ -95,11 +110,13 @@ export const SignUpController = async (req: Request, res: Response) => {
         );
 
         const jwtToken = await generateToken(newUser.email, "1d");
-        return res.status(201).json({
+        res.status(201).json({
             token: jwtToken,
         });
+        return;
     } catch (err) {
         console.error("error while creating user with err:", err);
-        return res.status(500).json({ message: "error while creating user" });
+        res.status(500).json({ message: "error while creating user" });
+        return;
     }
 };

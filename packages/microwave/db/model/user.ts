@@ -1,6 +1,19 @@
-import mongoose from "mongoose";
+import mongoose, { HydratedDocument } from "mongoose";
 
-const UserSchema = new mongoose.Schema({
+export interface User {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password?: string;
+    salt?: Buffer;
+    thirdPartyUniqueID?: string;
+    provider: "google" | "email";
+    createdAt: Date;
+    updatedAt: Date;
+}
+export type UserDocument = HydratedDocument<User>;
+
+const UserSchema = new mongoose.Schema<User>({
     firstName: {
         type: String,
         required: true,
@@ -29,7 +42,7 @@ const UserSchema = new mongoose.Schema({
         type: String,
         enum: ["google", "email"],
         default: "email",
-    },    
+    },
     createdAt: {
         type: Date,
         default: Date.now,

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 export const connectMongoDB = async () => {
-    await mongoose.connect("mongodb://127.0.0.1:27017/");
+    await mongoose.connect("mongodb://127.0.0.1:27017/microwave");
 
     // IF USERNAME/PASSWORD IS ENABLED
     // await mongoose.connect('mongodb://user:password@127.0.0.1:27017/test');
