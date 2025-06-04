@@ -1,7 +1,8 @@
 import Button from '@/components/Button'
 import TextInput from '@/components/TextInput'
+import { useAuth } from '@/context/AuthContext'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'expo-router'
+import { Link, Redirect } from 'expo-router'
 import { Controller, SubmitHandler, useForm } from 'react-hook-form'
 import { Keyboard, Text, TouchableWithoutFeedback, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -17,24 +18,28 @@ const signInSchema = z.object({
 type SignInFields = z.infer<typeof signInSchema>
 
 export default function SignInScreen() {
+  const { signIn, signInWithGoogle, accessToken } = useAuth()
   const {
     control,
     handleSubmit,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
     setError
   } = useForm({
     resolver: zodResolver(signInSchema)
   })
 
   const onSubmit: SubmitHandler<SignInFields> = async (data) => {
-    console.log('Form submitted with data:', data)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 3000)) // Simulate network request
-      throw new Error('Simulated error') // Simulate an error for demonstration
+      await signIn(data)
     } catch (error) {
       console.error('Error occurred during form submission:', error)
-      setError('root', { type: 'manual', message: 'Failed to sign in' })
+      setError('root', { type: 'manual', message: 'Failed to sign in. Please check your credentials' })
     }
+  }
+
+  // If the user is already signed in, redirect them to the search page
+  if (accessToken) {
+    return <Redirect href="/(tabs)/search" />
   }
 
   // Log the errors to the console for debugging
@@ -94,9 +99,15 @@ export default function SignInScreen() {
               />
             </View>
           </View>
+          {/* General sign in failure message */}
+          <View>
+            <Text className="text-red-accent text-sm">
+              {errors.root?.message}
+            </Text>
+          </View>
         </View>
         <Button
-          className="mt-8 disabled:bg-gray-200"
+          className="mt-5 disabled:bg-gray-200"
           onPress={handleSubmit(onSubmit)}
           label={isSubmitting ? 'Signing in...' : 'Sign in'}
           disabled={isSubmitting}
@@ -110,9 +121,7 @@ export default function SignInScreen() {
           <Button
             type="tertiary"
             label="Continue with Google"
-            onPress={() => {
-              alert('Sign in with Google pressed')
-            }}
+            onPress={signInWithGoogle}
             iconSource={require('@/assets/images/google-icon.png')}
           />
           {/* Sign in with Facebook. Add once facebook integration is ready */}

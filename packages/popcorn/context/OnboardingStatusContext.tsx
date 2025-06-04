@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { SplashScreen } from 'expo-router'
 import {
   Context,
   createContext,
@@ -8,7 +9,6 @@ import {
   useEffect,
   useState
 } from 'react'
-import { SplashScreen } from 'expo-router'
 
 SplashScreen.preventAutoHideAsync()
 
@@ -33,7 +33,6 @@ export function OnboardingStatusProvider({ children }: PropsWithChildren) {
     const checkOnboarding = async () => {
       try {
         const value = await AsyncStorage.getItem('@onboardingComplete')
-        console.log('Onboarding status:', value)
         if (value !== null) {
           setOnboardingComplete(true)
         } else {

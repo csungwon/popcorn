@@ -6,21 +6,33 @@ import { HapticTab } from '@/components/HapticTab'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import TabBarBackground from '@/components/ui/TabBarBackground'
 import { Colors } from '@/constants/Colors'
+import { useAuth } from '@/context/AuthContext'
 import { useOnboardingStatus } from '@/context/OnboardingStatusContext'
 import { useColorScheme } from '@/hooks/useColorScheme'
 
 export default function TabLayout() {
   const colorScheme = useColorScheme()
   const { onboardingComplete } = useOnboardingStatus()
+  const authState = useAuth()
 
   // If onboarding status is still loading, return null to avoid rendering the tabs
   if (onboardingComplete === null) {
     return null
   }
 
+  // If auth state is still loading, return null to avoid rendering the tabs
+  if (authState.isLoading) {
+    return null
+  }
+
   // redirect to onboarding page if onboarding is not complete
   if (!onboardingComplete) {
     return <Redirect href="/onboarding" />
+  }
+
+  // redirect to sign-in page if user is not authenticated
+  if (!authState.accessToken) {
+    return <Redirect href="/signin" />
   }
 
   return (

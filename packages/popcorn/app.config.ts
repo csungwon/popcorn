@@ -55,7 +55,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME
       }
-    ]
+    ],
+    'expo-secure-store'
   ],
   experiments: {
     typedRoutes: true
