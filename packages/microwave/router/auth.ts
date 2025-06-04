@@ -47,7 +47,7 @@ passport.use(
     )
 );
 
-router.get(
+router.post(
     "/google",
     asyncHandler(googleAuthMiddleware.VerifyGoogleToken),
     asyncHandler(AuthController.CheckUserFromGoogle)

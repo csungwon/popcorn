@@ -68,5 +68,4 @@ export const VerifyGoogleToken = async (req: Request, res: Response, next: NextF
         return;
     }
 
-    return next();
 };
