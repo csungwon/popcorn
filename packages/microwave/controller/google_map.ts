@@ -20,14 +20,14 @@ export const GetNearbyGroceryStoresFromGoogleMaps = async (req: Request, res: Re
                         latitude: parseFloat(lat as string),
                         longitude: parseFloat(lng as string),
                     },
-                    radius: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.RADIUS,
+                    radius: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.RADIUS_METER,
                 },
             },
             rankPreference: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.RANK_PREFERENCE,
         };
 
         const headers = {
-            "X-Goog-FieldMask": "places.displayName, places.formattedAddress",
+            "X-Goog-FieldMask": "places.displayName,places.formattedAddress",
             "X-Goog-Api-Key": process.env.GOOGLE_MAP_API_KEY,
         };
 
@@ -40,7 +40,11 @@ export const GetNearbyGroceryStoresFromGoogleMaps = async (req: Request, res: Re
 
         return res.status(200).json(groceryStores);
     } catch (error) {
-        console.error("error fetching grocery stores:", error);
+        if (error instanceof Error) {
+            console.error("error fetching grocery stores:", error.message);
+        } else {
+            console.error("error fetching grocery stores:", error);
+        }
         return res.status(500).json({ error: "internal server error" });
     }
 };
