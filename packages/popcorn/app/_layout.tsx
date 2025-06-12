@@ -38,13 +38,14 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <OnboardingStatusProvider>
             <GestureHandlerRootView>
-              <Stack>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack screenOptions={{ headerShown: false}}>
+                <Stack.Screen name="(tabs)" />
                 <Stack.Screen
                   name="onboarding"
                   options={{ headerShown: false, animation: 'none' }}
                 />
-                <Stack.Screen name="signin" options={{ headerShown: false }} />
+                <Stack.Screen name="signin" />
+                <Stack.Screen name="signup" />
                 <Stack.Screen name="+not-found" />
               </Stack>
             </GestureHandlerRootView>

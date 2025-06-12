@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { VerifyFunction } from "passport-local";
 
+import { MongoServerError } from 'mongodb';
 import { CRYPTO_PARAM, PASSWORD_RULE } from "../const";
 import { userDao } from "../db/dao";
 import { CryptoUtils } from "../util";
@@ -97,26 +98,31 @@ export const SignUpController = async (req: Request, res: Response) => {
         return;
     }
 
+    let newUser
     try {
-        const salt = await bcrypt.genSalt(CRYPTO_PARAM.SALT_LENGTH);
-        const hashedPassword = await CryptoUtils.hashPassword(req.body.password, salt);
+      const salt = await bcrypt.genSalt(CRYPTO_PARAM.SALT_LENGTH)
+      const hashedPassword = await CryptoUtils.hashPassword(req.body.password, salt);
 
-        const newUser = await userDao.createUser(
-            req.body.firstName,
-            req.body.lastName,
-            req.body.email,
-            hashedPassword.toString(),
-            Buffer.from(salt, "utf-8")
-        );
-
-        const jwtToken = await generateToken(newUser.email, "1d");
-        res.status(201).json({
-            token: jwtToken,
-        });
-        return;
+      newUser = await userDao.createUser(
+        req.body.firstName,
+        req.body.lastName,
+        req.body.email,
+        hashedPassword.toString(),
+        Buffer.from(salt, "utf-8")
+      );
     } catch (err) {
-        console.error("error while creating user with err:", err);
-        res.status(500).json({ message: "error while creating user" });
-        return;
+      if (err instanceof MongoServerError && err.code === 11000) {
+        console.error('error while creating user with err:', err)
+        res.status(400).json({ message: 'email already exists' })
+        return
+      }
+      console.error('error while creating user with err:', err)
+      res.status(500).json({ message: 'error while creating user' })
+      return
     }
+
+    const jwtToken = await generateToken(newUser.email, '1d')
+    res.status(201).json({
+      token: jwtToken
+    })
 };

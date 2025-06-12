@@ -15,7 +15,7 @@ const signInSchema = z.object({
   password: z.string({ required_error: 'Password is required' })
 })
 
-type SignInFields = z.infer<typeof signInSchema>
+export type SignInFields = z.infer<typeof signInSchema>
 
 export default function SignInScreen() {
   const { signIn, signInWithGoogle, accessToken } = useAuth()
@@ -47,7 +47,7 @@ export default function SignInScreen() {
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <SafeAreaView className="px-4 py-5 bg-white inset-0 absolute">
         <Text className="text-3xl font-bold">Sign in</Text>
-        <View className="mt-3">
+        <View>
           <View className="mt-7 flex flex-col gap-3">
             <View>
               <Text className="mb-1.5">Email</Text>

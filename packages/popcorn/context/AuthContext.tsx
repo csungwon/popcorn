@@ -1,8 +1,11 @@
+import { SignInFields } from '@/app/signin'
+import { SignUpFields } from '@/app/signup/_layout'
 import microwaveAxiosInstance from '@/utils/microwaveAxios'
 import {
   GoogleSignin,
   isSuccessResponse
 } from '@react-native-google-signin/google-signin'
+import { isAxiosError } from 'axios'
 import { SplashScreen, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { createContext, useContext, useEffect, useState } from 'react'
@@ -16,9 +19,9 @@ GoogleSignin.configure({
 type AuthContextType = {
   accessToken: string | null
   isLoading: boolean
-  signIn: (input: LocalSignInInput) => Promise<void>
+  signIn: (input: SignInFields) => Promise<void>
   signInWithGoogle: () => Promise<void>
-  signUp: () => Promise<void>
+  signUp: (input: SignUpFields) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -29,9 +32,13 @@ type SignInResponse = {
   token: string
 }
 
-type LocalSignInInput = {
-  email: string
-  password: string
+type SignUpResponse = {
+  token: string
+}
+
+export type SignUpError = {
+  message: string
+  code: 400 | 500
 }
 
 const AUTH_STORAGE_KEY = 'auth-access-token'
@@ -72,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading])
 
-  const signIn = async ({ email, password }: LocalSignInInput) => {
+  const signIn = async ({ email, password }: SignInFields) => {
     // Implement sign-in logic here
     try {
       const response = await microwaveAxiosInstance.post<SignInResponse>(
@@ -113,8 +120,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signUp = async () => {
-    // Implement sign-up logic here
+  const signUp = async ({
+    firstName,
+    lastName,
+    email,
+    password
+  }: SignUpFields) => {
+    try {
+      const response = await microwaveAxiosInstance.post<SignUpResponse>(
+        '/api/v1/auth/signup',
+        { firstName, lastName, email, password }
+      )
+      const accessToken = response.data.token
+      await SecureStore.setItemAsync(AUTH_STORAGE_KEY, accessToken)
+      setAccessToken(accessToken)
+      router.replace('/(tabs)/search') // Navigate to the search page after successful sign-in
+    } catch (error) {
+      console.error('Sign-up failed', error)
+      if (isAxiosError(error) && error.response?.status === 400) {
+        throw { message: 'Email is already taken', code: 400 }
+      }
+      throw { message: 'Sign-up failed. Try again later', code: 500 }
+    }
   }
 
   const signOut = async () => {
