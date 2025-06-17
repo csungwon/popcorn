@@ -11,7 +11,7 @@ export default function SignUpEmailPasswordScreen() {
     control,
     handleSubmit,
     setError,
-    formState: { isSubmitting, isValidating }
+    formState: { isSubmitting }
   } = useFormContext<SignUpFields>()
   const { signUp } = useAuth()
 

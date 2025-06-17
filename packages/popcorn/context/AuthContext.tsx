@@ -134,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const accessToken = response.data.token
       await SecureStore.setItemAsync(AUTH_STORAGE_KEY, accessToken)
       setAccessToken(accessToken)
-      router.replace('/(tabs)/search') // Navigate to the search page after successful sign-in
+      router.replace('/signup/complete') // Navigate to complete screen after successful sign up
     } catch (error) {
       console.error('Sign-up failed', error)
       if (isAxiosError(error) && error.response?.status === 400) {
