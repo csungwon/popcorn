@@ -1,50 +1,99 @@
-import { Request, Response } from "express";
-import { NearbySearchRequest, NearbySearchPlace } from "../types/google_map";
-import { GOOGLE_MAP_NEARBY_SEARCH_CONFIG } from "../const/google_map";
-import axios from "axios";
+import { PlacesClient, protos } from '@googlemaps/places'
+import { Request, Response } from 'express'
+import { GOOGLE_MAP_NEARBY_SEARCH_CONFIG } from '../const/google_map'
+import { Store, StoreType } from '../db/model'
 
-export const GetNearbyGroceryStoresFromGoogleMaps = async (req: Request, res: Response) => {
-    const { lat, lng } = req.query;
+const placesClient = new PlacesClient({
+  apiKey: process.env.GOOGLE_MAP_API_KEY
+})
 
-    if (!lat || !lng) {
-        return res.status(400).json({ error: "latitude and longitude are required" });
-    }
+type GooglePlace = protos.google.maps.places.v1.Place
 
-    try {
-        const request: NearbySearchRequest = {
-            includedTypes: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.INCLUDED_TYPES,
-            maxResultCount: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.MAX_RESULT_COUNT,
-            locationRestriction: {
-                circle: {
-                    center: {
-                        latitude: parseFloat(lat as string),
-                        longitude: parseFloat(lng as string),
-                    },
-                    radius: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.RADIUS_METER,
-                },
+// fetches grocery stores based on the location given in the request
+// it will first fetch nearby stores using Google Places API,
+// and then it'll be matched to the stores registered in the db
+// if the store does not exist in our database, new ones will be created
+export const GetNearbyGroceryStores = async (req: Request, res: Response) => {
+  const { lat, lng } = req.query
+
+  if (!lat || !lng) {
+    return res
+      .status(400)
+      .json({ error: 'latitude and longitude are required' })
+  }
+
+  try {
+    // Call Google Places API
+    const [response] = await placesClient.searchNearby(
+      {
+        includedTypes: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.INCLUDED_TYPES,
+        maxResultCount: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.MAX_RESULT_COUNT,
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude: parseFloat(lat as string),
+              longitude: parseFloat(lng as string)
             },
-            rankPreference: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.RANK_PREFERENCE,
-        };
+            radius: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.RADIUS_METER
+          }
+        },
+        rankPreference: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.RANK_PREFERENCE
+      },
+      { otherArgs: { headers: { 'X-Goog-FieldMask': '*' } } }
+    )
+    const googlePlaces = response.places ?? []
+    const googlePlaceIds = googlePlaces.map((place) => place.id)
 
-        const headers = {
-            "X-Goog-FieldMask": "places.displayName,places.formattedAddress",
-            "X-Goog-Api-Key": process.env.GOOGLE_MAP_API_KEY,
-        };
+    // get stores registered in the db
+    const existingStores = await Store.find({
+      googlePlaceId: { $in: googlePlaceIds}
+    })
 
-        const response = await axios.post("https://places.googleapis.com/v1/places:searchNearby", request, { headers });
+    console.debug(`Found ${existingStores.length} stores in the db`)
 
-        const groceryStores = response.data.places.map((place: NearbySearchPlace) => ({
-            name: place.displayName,
-            address: place.formattedAddress,
-        }));
-
-        return res.status(200).json(groceryStores);
-    } catch (error) {
-        if (error instanceof Error) {
-            console.error("error fetching grocery stores:", error.message);
-        } else {
-            console.error("error fetching grocery stores:", error);
+    // select google places to be registered in our db
+    const existingStoreIds = new Set(existingStores.map((store) => store.googlePlaceId))
+    const storesToCreate: StoreType[] = googlePlaces
+      .filter((place) => !existingStoreIds.has(place.id))
+      .filter(
+        // filter out google places with no displayName
+        (place): place is GooglePlace & { displayName: { text: string } } =>
+          !!place.displayName?.text
+      )
+      .map((place) => ({
+        name: place.displayName.text,
+        googlePlaceId: place.id,
+        address: place.formattedAddress,
+        iconUrl: getIconUrl(place),
+        location: {
+          latitude: place.location?.latitude,
+          longitude: place.location?.longitude
         }
-        return res.status(500).json({ error: "internal server error" });
+      }))
+
+    console.debug(`Creating ${storesToCreate.length} Stores...`)
+
+    const newStores = await Store.insertMany(storesToCreate)
+
+    // merge existing stores with the newly created stores
+    const result = [...existingStores, ...newStores]
+    // sort by the order returned by the google result
+    result.sort((a, b) => googlePlaceIds.indexOf(a.googlePlaceId) - googlePlaceIds.indexOf(b.googlePlaceId))
+
+    return res.status(200).json(result.map((store) => store.toJSON()))
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('error fetching grocery stores:', error.message)
+    } else {
+      console.error('error fetching grocery stores:', error)
     }
-};
+    return res.status(500).json({ error: 'internal server error' })
+  }
+}
+
+// free API resource for returning company icons.
+// Frontend will validate the image url and decide whether to render fallback
+function getIconUrl(place: GooglePlace) {
+  const websiteUrl = new URL(place.websiteUri)
+  return `https://logo.clearbit.com/${websiteUrl.host}`
+}

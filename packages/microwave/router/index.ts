@@ -1,8 +1,7 @@
 import express from "express";
 
+import { GoogleMapController, jwtController } from "../controller";
 import authRouter from "./auth";
-import googleMapRouter from "./google_map";
-import { jwtController } from "../controller";
 
 const router = express.Router();
 
@@ -17,7 +16,9 @@ router.use("/api/v1/profile", jwtController.jwtAuthenticator, (req, res) => {
     });
 });
 
-// google map
-router.use("/api/v1/google_map", googleMapRouter)
+// nearby stores
+router.get("/api/v1/nearby_stores", (req, res, next) => {
+    GoogleMapController.GetNearbyGroceryStores(req, res).catch(next);
+})
 
 export default router;
