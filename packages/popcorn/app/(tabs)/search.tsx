@@ -1,9 +1,11 @@
 import StoreChip from '@/components/StoreChip'
+import microwaveAxiosInstance from '@/utils/microwaveAxios'
 import GorhomBottomSheet, {
   BottomSheetTextInput,
   BottomSheetView
 } from '@gorhom/bottom-sheet'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
+import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
 import {
   getCurrentPositionAsync,
@@ -29,36 +31,6 @@ const BottomSheet = cssInterop(GorhomBottomSheet, {
   handleIndicatorClassName: 'handleIndicatorStyle'
 })
 
-// mock data for nearby stores
-// in production, get these from API
-const nearbyStores = [
-  {
-    id: 'costco',
-    name: 'Costco',
-    logo: require('@/assets/images/storeLogo/costco.png')
-  },
-  {
-    id: 'safeway',
-    name: 'Safeway',
-    logo: require('@/assets/images/storeLogo/safeway.png')
-  },
-  {
-    id: 'traderjoes',
-    name: "Trader Joe's",
-    logo: require('@/assets/images/storeLogo/traderjoes.png')
-  },
-  {
-    id: 'hmart',
-    name: 'H Mart',
-    logo: require('@/assets/images/storeLogo/hmart.png')
-  },
-  {
-    id: 'sprouts',
-    name: 'Sprouts',
-    logo: require('@/assets/images/storeLogo/sprouts.png')
-  }
-]
-
 const recentSearches = [
   {
     search: 'Banana',
@@ -73,6 +45,19 @@ const recentSearches = [
     searchedAt: '2023-10-01T15:00:00Z'
   }
 ]
+
+// return type of the API response
+// TODO: share the type from the microwave package
+type NearbyStore = {
+  _id: string
+  name: string
+  iconUrl: string
+  address: string
+  location: {
+    longitude: number
+    latitude: number
+  }
+}
 
 export default function SearchScreen() {
   const [region, setRegion] = useState<Region>()
@@ -101,6 +86,18 @@ export default function SearchScreen() {
     }
     getCurrentLocation()
   }, [])
+
+  // fetch nearby stores
+  const { data: nearbyStores, fetchStatus, error } = useQuery({
+    queryKey: ['nearbyStores', region?.latitude, region?.longitude],
+    queryFn: async (): Promise<NearbyStore[]> => {
+      const response = await microwaveAxiosInstance.get(
+        `/api/v1/nearby_stores?lat=${region?.latitude}&lng=${region?.longitude}`
+      )
+      return response.data
+    },
+    enabled: !!region
+  })
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -164,18 +161,18 @@ export default function SearchScreen() {
               contentContainerClassName="items-start gap-2 mt-4"
               showsHorizontalScrollIndicator={false}
             >
-              {nearbyStores.map((store) => (
+              {(nearbyStores || []).map((store) => (
                 <TouchableOpacity
-                  key={store.id}
+                  key={store._id}
                   onPress={() => {
-                    setSelectedStore(store.id)
+                    setSelectedStore(store._id)
                   }}
                 >
                   <StoreChip
-                    key={store.id}
+                    key={store._id}
                     name={store.name}
-                    logo={store.logo}
-                    isActive={selectedStore === store.id}
+                    logo={store.iconUrl}
+                    isActive={selectedStore === store._id}
                   />
                 </TouchableOpacity>
               ))}
