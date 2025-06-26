@@ -24,6 +24,13 @@ export const GetNearbyGroceryStores = async (req: Request, res: Response) => {
 
   try {
     // Call Google Places API
+    const fields = [
+      'places.id',
+      'places.displayName',
+      'places.formattedAddress',
+      'places.location',
+      'places.websiteUri'
+    ]
     const [response] = await placesClient.searchNearby(
       {
         includedTypes: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.INCLUDED_TYPES,
@@ -39,20 +46,22 @@ export const GetNearbyGroceryStores = async (req: Request, res: Response) => {
         },
         rankPreference: GOOGLE_MAP_NEARBY_SEARCH_CONFIG.RANK_PREFERENCE
       },
-      { otherArgs: { headers: { 'X-Goog-FieldMask': '*' } } }
+      { otherArgs: { headers: { 'X-Goog-FieldMask': fields.join(',') } } }
     )
     const googlePlaces = response.places ?? []
     const googlePlaceIds = googlePlaces.map((place) => place.id)
 
     // get stores registered in the db
     const existingStores = await Store.find({
-      googlePlaceId: { $in: googlePlaceIds}
+      googlePlaceId: { $in: googlePlaceIds }
     })
 
     console.debug(`Found ${existingStores.length} stores in the db`)
 
     // select google places to be registered in our db
-    const existingStoreIds = new Set(existingStores.map((store) => store.googlePlaceId))
+    const existingStoreIds = new Set(
+      existingStores.map((store) => store.googlePlaceId)
+    )
     const storesToCreate: StoreType[] = googlePlaces
       .filter((place) => !existingStoreIds.has(place.id))
       .filter(
@@ -78,7 +87,11 @@ export const GetNearbyGroceryStores = async (req: Request, res: Response) => {
     // merge existing stores with the newly created stores
     const result = [...existingStores, ...newStores]
     // sort by the order returned by the google result
-    result.sort((a, b) => googlePlaceIds.indexOf(a.googlePlaceId) - googlePlaceIds.indexOf(b.googlePlaceId))
+    result.sort(
+      (a, b) =>
+        googlePlaceIds.indexOf(a.googlePlaceId) -
+        googlePlaceIds.indexOf(b.googlePlaceId)
+    )
 
     return res.status(200).json(result.map((store) => store.toJSON()))
   } catch (error) {

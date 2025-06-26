@@ -69,7 +69,8 @@ module.exports = {
         }
       },
       boxShadow: {
-        bottomSheet: '0 -4px 4px 0 rgba(0, 0, 0, 0.25)'
+        bottomSheet: '0 -4px 4px 0 rgba(0, 0, 0, 0.25)',
+        mapCallout: '0 2px 2px 0 rgba(0, 0, 0, 0.25)'
       }
     }
   },
