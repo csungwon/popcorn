@@ -11,6 +11,7 @@ import '../global.css'
 
 import { AuthProvider } from '@/context/AuthContext'
 import { OnboardingStatusProvider } from '@/context/OnboardingStatusContext'
+import { UserLocationProvider } from '@/context/UserLocation'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import 'expo-dev-client'
@@ -38,25 +39,29 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <SafeAreaProvider>
-            <OnboardingStatusProvider>
-              <GestureHandlerRootView>
-                <Stack screenOptions={{ headerShown: false}}>
-                  <Stack.Screen name="(tabs)" />
-                  <Stack.Screen
-                    name="onboarding"
-                    options={{ headerShown: false, animation: 'none' }}
-                  />
-                  <Stack.Screen name="signin" />
-                  <Stack.Screen name="signup" />
-                  <Stack.Screen name="+not-found" />
-                </Stack>
-              </GestureHandlerRootView>
-            </OnboardingStatusProvider>
-          </SafeAreaProvider>
-          <StatusBar style="auto" />
-        </ThemeProvider>
+        <UserLocationProvider>
+          <ThemeProvider
+            value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}
+          >
+            <SafeAreaProvider>
+              <OnboardingStatusProvider>
+                <GestureHandlerRootView>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen
+                      name="onboarding"
+                      options={{ headerShown: false, animation: 'none' }}
+                    />
+                    <Stack.Screen name="signin" />
+                    <Stack.Screen name="signup" />
+                    <Stack.Screen name="+not-found" />
+                  </Stack>
+                </GestureHandlerRootView>
+              </OnboardingStatusProvider>
+            </SafeAreaProvider>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </UserLocationProvider>
       </AuthProvider>
     </QueryClientProvider>
   )

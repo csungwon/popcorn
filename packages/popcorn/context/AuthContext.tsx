@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const accessToken = response.data.token
       await SecureStore.setItemAsync(AUTH_STORAGE_KEY, accessToken)
       setAccessToken(accessToken)
-      router.replace('/(tabs)/search') // Navigate to the search page after successful sign-in
+      router.replace('/') // Navigate to the search page after successful sign-in
     } catch (error) {
       console.error('Sign-in failed', error)
       throw error // Re-throw the error to handle it in the UI
@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const accessToken = googleSignInResponse.data.token
           await SecureStore.setItemAsync(AUTH_STORAGE_KEY, accessToken)
           setAccessToken(accessToken)
-          router.replace('/(tabs)/search') // Navigate to the search page after successful sign-in
+          router.replace('/') // Navigate to the search page after successful sign-in
         } catch (error) {
           console.error('Google sign-in failed', error)
         }
