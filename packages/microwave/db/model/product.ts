@@ -1,4 +1,17 @@
-import { Schema, model } from 'mongoose'
+import { InferSchemaType, Schema, model } from 'mongoose'
+
+
+const MoneySchema = new Schema({
+  currencyCode: {
+    type: String,
+    enum: ['USD', 'KRW'],
+    required: true
+  },
+  amount: {
+    type: Number,
+    required: true
+  }
+})
 
 const ProductSchema = new Schema({
   name: {
@@ -23,12 +36,22 @@ const ProductSchema = new Schema({
       ref: 'User'
     }
   ],
+  store: {
+    type: Schema.Types.ObjectId,
+    ref: 'Store',
+    required: true
+  },
   tags: [
     {
       type: String,
       enum: ['VERIFIED', '1ST_POST', 'POPULAR']
     }
   ],
+  price: {
+    type: MoneySchema,
+    required: true
+  },
+  image: String,
   description: String,
   createdAt: {
     type: Date,
@@ -36,4 +59,5 @@ const ProductSchema = new Schema({
   }
 })
 
+export type ProductType = InferSchemaType<typeof ProductSchema>
 export const Product = model('Product', ProductSchema)

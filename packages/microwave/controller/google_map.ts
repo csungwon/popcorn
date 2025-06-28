@@ -75,8 +75,11 @@ export const GetNearbyGroceryStores = async (req: Request, res: Response) => {
         address: place.formattedAddress,
         iconUrl: getIconUrl(place),
         location: {
-          latitude: place.location?.latitude,
-          longitude: place.location?.longitude
+          type: 'Point',
+          coordinates: [
+            place.location?.longitude ?? 0,
+            place.location?.latitude ?? 0
+          ]
         }
       }))
 
@@ -107,6 +110,10 @@ export const GetNearbyGroceryStores = async (req: Request, res: Response) => {
 // free API resource for returning company icons.
 // Frontend will validate the image url and decide whether to render fallback
 function getIconUrl(place: GooglePlace) {
-  const websiteUrl = new URL(place.websiteUri)
-  return `https://logo.clearbit.com/${websiteUrl.host}`
+  try {
+    const websiteUrl = new URL(place.websiteUri)
+    return `https://logo.clearbit.com/${websiteUrl.host}`
+  } catch {
+    return ''
+  }
 }
