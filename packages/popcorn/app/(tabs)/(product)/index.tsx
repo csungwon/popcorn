@@ -9,10 +9,11 @@ import GorhomBottomSheet, {
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
-import { Image } from 'expo-image'
+import { Image, ImageSource } from 'expo-image'
+import { Link } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
 import { cssInterop } from 'nativewind'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FlatList,
   Keyboard,
@@ -57,46 +58,106 @@ type Store = {
   }
 }
 
+type Product = {
+  _id: string
+  name: string
+  quantity: {
+    unit: string
+    value: number
+  }
+  poster: {
+    firstName: string
+    lastName: string
+  }
+  likedUsers: string[]
+  store: Store
+  price: {
+    currencyCode: string
+    amount: number
+  }
+  image: ImageSource
+  description: string
+  createdAt: string
+}
+
 export default function SearchScreen() {
   const { userLocation } = useUserLocation()
   const [search, setSearch] = useState<string>('')
-  const [selectedStore, setSelectedStore] = useState<string | null>(null)
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
+  const [storeFilter, setStoreFilter] = useState<string | null>(null)
   const [isSearchInputFocused, setIsSearchInputFocused] =
     useState<boolean>(false)
   const tabBarHeight = useBottomTabBarHeight()
   const mapViewRef = useRef<MapView>(null)
   const nearbyStoreListRef = useRef<FlatList>(null)
+  const [isBottomSheetExpanded, setIsBottomSheetExpanded] =
+    useState<boolean>(false)
 
   const userLatitude = userLocation.coords.latitude
   const userLongitude = userLocation.coords.longitude
 
-  const { data: nearbyStores, isSuccess } = useQuery({
-    queryKey: ['nearbyStores', userLatitude, userLongitude],
-    queryFn: async (): Promise<Store[]> => {
-      const response = await microwaveAxiosInstance.get(
-        `/api/v1/nearby_stores?lat=${userLatitude}&lng=${userLongitude}`
-      )
-      return response.data
-    },
-    enabled: !!(userLatitude && userLongitude)
-  })
+  const { data: nearbyStores = [], isSuccess: isNearbyStoresSuccess } =
+    useQuery({
+      queryKey: ['nearbyStores', userLatitude, userLongitude],
+      queryFn: async (): Promise<Store[]> => {
+        const response = await microwaveAxiosInstance.get(
+          `/api/v1/nearby_stores?lat=${userLatitude}&lng=${userLongitude}`
+        )
+        return response.data
+      },
+      enabled: !!(userLatitude && userLongitude)
+    })
+
+  const storesToShow = useMemo(() => {
+    // If a specific store is selected, show only that store
+    if (selectedStoreId) {
+      return [nearbyStores.find((store) => store._id === selectedStoreId)!]
+    }
+
+    // If a store filter is applied, show only stores that match the filter
+    if (!!storeFilter) {
+      return nearbyStores.filter((store) => store.name === storeFilter)
+    }
+
+    // Otherwise, show all nearby stores
+    return nearbyStores
+  }, [selectedStoreId, storeFilter, nearbyStores])
 
   useEffect(() => {
-    if (isSuccess && nearbyStores.length > 0) {
+    if (isNearbyStoresSuccess) {
       mapViewRef.current?.fitToCoordinates(
-        nearbyStores.map((store) => store.location),
+        [
+          ...storesToShow.map((store) => store.location),
+          { latitude: userLatitude, longitude: userLongitude }
+        ],
         {
           animated: true,
-          edgePadding: { top: 100, right: 100, bottom: 500, left: 45 }
+          edgePadding: {
+            top: 100,
+            right: 100,
+            bottom: isBottomSheetExpanded ? 500 : 400,
+            left: 100
+          }
         }
       )
     }
-  }, [nearbyStores, isSuccess])
+  }, [nearbyStores, isNearbyStoresSuccess, storesToShow, isBottomSheetExpanded])
+
+  // De-duplicate stores by name
+  const nearbyStoresUniqueByName = [
+    ...new Map<string, Store>(
+      nearbyStores.map((store) => [store.name, store])
+    ).values()
+  ]
+
+  const selectedStore = nearbyStores.find(
+    (store) => store._id === selectedStoreId
+  )
 
   const { data: nearbyProducts, isSuccess: isNearbyProductsSuccess } = useQuery(
     {
       queryKey: ['nearbyProducts', userLatitude, userLongitude],
-      queryFn: async () => {
+      queryFn: async (): Promise<Product[]> => {
         const response = await microwaveAxiosInstance.get(
           `/api/v1/product?lat=${userLatitude}&lng=${userLongitude}`
         )
@@ -106,36 +167,38 @@ export default function SearchScreen() {
     }
   )
 
+  const productsToShow = useMemo(() => {
+    if (!isNearbyProductsSuccess) {
+      return []
+    }
 
+    // If a specific store is selected, show only products from that store
+    if (selectedStoreId) {
+      return nearbyProducts.filter(
+        (product) => product.store._id === selectedStoreId
+      )
+    }
 
-  const handleStoreSelect = (store: Store) => {
-    if (selectedStore === store._id) {
-      setSelectedStore(null)
-      mapViewRef.current?.animateCamera({
-        center: {
-          latitude: userLatitude - 0.05,
-          longitude: userLongitude
-        },
-        zoom: 12
-      })
+    // else show all products from nearby stores
+    return nearbyProducts
+  }, [selectedStoreId, nearbyProducts])
+
+  // handle store filter selection
+  const handleStoreFilter = (storeName: string) => {
+    setSelectedStoreId(null)
+    if (storeFilter === storeName) {
+      setStoreFilter(null)
       nearbyStoreListRef.current?.scrollToIndex({
         animated: true,
         index: 0
       })
     } else {
-      setSelectedStore(store._id)
-      mapViewRef.current?.animateCamera({
-        center: {
-          latitude: store.location.latitude - 0.003,
-          longitude: store.location.longitude
-        },
-        zoom: 16
-      })
+      setStoreFilter(storeName)
       nearbyStoreListRef.current?.scrollToIndex({
         animated: true,
-        index: nearbyStores?.findIndex(
-          (nearbyStore) => nearbyStore._id === store._id
-        )!
+        index: nearbyStoresUniqueByName.findIndex(
+          (nearbyStore) => nearbyStore.name === storeName
+        )
       })
     }
   }
@@ -161,20 +224,24 @@ export default function SearchScreen() {
                 featureType: 'poi.business',
                 stylers: [
                   {
-                    visibility: 'off' // turning this off as it interferes with our own markers
+                    visibility: 'on' // turning this off as it interferes with our own markers
                   }
                 ]
               }
             ]}
           >
-            {isSuccess &&
-              nearbyStores?.length > 0 &&
-              nearbyStores.map((store) => (
+            {isNearbyStoresSuccess &&
+              storesToShow.map((store) => (
                 <Marker
                   key={store._id}
                   coordinate={store.location}
                   anchor={{ x: 0.53, y: 1 }}
-                  onPress={() => handleStoreSelect(store)}
+                  onPress={() => {
+                    setSelectedStoreId(
+                      selectedStoreId === store._id ? null : store._id
+                    )
+                    // handleStoreFilter(store.name)
+                  }}
                 >
                   <View className="flex-row items-center gap-1">
                     <Image
@@ -183,8 +250,8 @@ export default function SearchScreen() {
                     />
                     <View
                       className={clsx(
-                        'absolute left-7 max-w-[140px] rounded-full px-1.5 py-1 shadow-mapCallout',
-                        selectedStore === store._id
+                        'max-w-[140px] rounded-full px-1.5 py-1 shadow-mapCallout',
+                        selectedStoreId === store._id
                           ? 'bg-orange-500'
                           : 'bg-orange-100'
                       )}
@@ -207,12 +274,15 @@ export default function SearchScreen() {
         className="rounded-t-2xl shadow-bottomSheet"
         handleIndicatorClassName="w-[135] h-[5] bg-gray-300"
         index={0}
-        snapPoints={['40%', '60%']}
+        snapPoints={[278, 364]}
         bottomInset={tabBarHeight}
         enableDynamicSizing={false}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
         enableContentPanningGesture={false}
+        onChange={(index) => {
+          setIsBottomSheetExpanded(index === 1)
+        }}
       >
         <BottomSheetView className="px-4 pt-2">
           {/* Search Input */}
@@ -251,24 +321,20 @@ export default function SearchScreen() {
             )}
           </View>
           {/* Nearby Stores */}
-          <FlatList
-            data={nearbyStores || []}
+          <FlatList<Store>
+            data={nearbyStoresUniqueByName}
             keyExtractor={(store) => store._id}
             horizontal
             contentContainerClassName="flex-row gap-2 mb-1"
             className="mt-4 mb-2"
             showsHorizontalScrollIndicator={false}
             ref={nearbyStoreListRef}
-            renderItem={({ item: store, index }) => (
-              <TouchableOpacity
-                onPress={() => {
-                  handleStoreSelect(store)
-                }}
-              >
+            renderItem={({ item: store }) => (
+              <TouchableOpacity onPress={() => handleStoreFilter(store.name)}>
                 <StoreChip
                   name={store.name}
                   logo={store.iconUrl}
-                  isActive={selectedStore === store._id}
+                  isActive={storeFilter === store.name}
                 />
               </TouchableOpacity>
             )}
@@ -309,72 +375,92 @@ export default function SearchScreen() {
             )}
         </BottomSheetView>
         {/* Nearby products */}
+        {selectedStore && (
+          <View className="px-4 pt-2 pb-3">
+            <View className="flex-row items-center gap-1">
+              <Text className="text-lg">{selectedStore.name}</Text>
+              <View className="w-1 h-1 rounded-full bg-gray-400"></View>
+              <Text>
+                {calculateDistance(
+                  {
+                    latitude: userLatitude,
+                    longitude: userLongitude
+                  },
+                  selectedStore.location
+                )}
+                mi
+              </Text>
+            </View>
+            <Text className="mt-0.5 text-xs text-gray-500">{selectedStore.address}</Text>
+          </View>
+        )}
         {isNearbyProductsSuccess && (
           <BottomSheetScrollView
             className="px-4 gap-6"
             showsVerticalScrollIndicator={false}
           >
-            {nearbyProducts.map((product: any) => {
+            {productsToShow.map((product: any) => {
               return (
-                <View
-                  key={product._id}
-                  className="py-4 border-b border-gray-100"
-                >
-                  <View className="flex-row gap-3 py-4">
-                    <View className="flex-row w-[90] h-[90] rounded-md bg-gray-100 grid place-items-center">
-                      <Image source={product.image} className="w-full h-full" />
-                    </View>
-                    <View className="gap-1 grow">
-                      <View className="flex-row gap-1 items-center">
-                        <Image
-                          className="w-[22] h-[22] rounded-full border border-gray-200"
-                          source={product.store.iconUrl}
-                          contentFit="contain"
-                        />
-                        <View className="flex-row items-center gap-1">
-                          <Text className="text-sm text-gray-500">
-                            {product.store.name}
-                          </Text>
-                          <View className="w-1 h-1 rounded-full bg-gray-500"></View>
-                          <Text className="text-sm text-gray-500">
-                            {calculateDistance(
-                              {
-                                latitude: userLatitude,
-                                longitude: userLongitude
-                              },
-                              product.store.location
-                            )}
-                            mi
-                          </Text>
-                        </View>
+                <Link key={product._id} href={`/product/${product._id}`}>
+                  <View
+                    className="border-b border-gray-100 w-full"
+                  >
+                    <View className="flex-row gap-3 py-4">
+                      <View className="flex-row w-[90] h-[90] rounded-md bg-gray-100 grid place-items-center">
+                        <Image source={product.image} className="w-full h-full" />
                       </View>
-                      <Text className="text-xl text-black">
-                        {product.price.currencyCode === 'USD' ? '$' : ''}
-                        {product.price.amount}
-                      </Text>
-                      <Text className="text-base text-black">
-                        {product.quantity.value}
-                        {product.quantity.unit} {product.name}
-                      </Text>
-                      <View className="mt-4 w-full rounded-full px-2.5 py-1 flex-row items-center border border-gray-200">
+                      <View className="gap-1 grow">
                         <View className="flex-row gap-1 items-center">
-                          <SymbolView
-                            name="person.circle"
-                            size={18}
-                            tintColor="#000"
+                          <Image
+                            className="w-[22] h-[22] rounded-full border border-gray-200"
+                            source={product.store.iconUrl}
+                            contentFit="contain"
                           />
-                          <Text>
-                            {product.poster.firstName} {product.poster.lastName}
-                          </Text>
+                          <View className="flex-row items-center gap-1">
+                            <Text className="text-sm text-gray-500">
+                              {product.store.name}
+                            </Text>
+                            <View className="w-1 h-1 rounded-full bg-gray-500"></View>
+                            <Text className="text-sm text-gray-500">
+                              {calculateDistance(
+                                {
+                                  latitude: userLatitude,
+                                  longitude: userLongitude
+                                },
+                                product.store.location
+                              )}
+                              mi
+                            </Text>
+                          </View>
                         </View>
-                        <View className="absolute right-0 py-1 px-3 border border-gray-200 flex-row rounded-full gap-1.5">
-                          <SymbolView name="heart" size={18} tintColor="#000" />
-                          <Text>{product.likedUsers.length || 0}</Text>
+                        <Text className="text-xl text-black">
+                          {product.price.currencyCode === 'USD' ? '$' : ''}
+                          {product.price.amount}
+                        </Text>
+                        <Text className="text-base text-black">
+                          {product.quantity.value}
+                          {product.quantity.unit} {product.name}
+                        </Text>
+                        <View className="mt-4 w-full rounded-full px-2.5 py-1 flex-row items-center border border-gray-200">
+                          <View className="flex-row gap-1 items-center">
+                            <SymbolView
+                              name="person.circle"
+                              size={18}
+                              tintColor="#000"
+                            />
+                            <Text>
+                              {product.poster.firstName} {product.poster.lastName}
+                            </Text>
+                          </View>
+                          <View className="absolute right-0 py-1 px-3 border border-gray-200 flex-row rounded-full gap-1.5">
+                            <SymbolView name="heart" size={18} tintColor="#000" />
+                            <Text>{product.likedUsers.length || 0}</Text>
+                          </View>
                         </View>
                       </View>
                     </View>
                   </View>
-                </View>
+                </Link>
               )
             })}
           </BottomSheetScrollView>
