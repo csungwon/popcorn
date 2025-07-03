@@ -1,4 +1,4 @@
-import { ExpoConfig, ConfigContext } from 'expo/config'
+import { ConfigContext, ExpoConfig } from 'expo/config'
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -56,7 +56,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME
       }
     ],
-    'expo-secure-store'
+    'expo-secure-store',
+    [
+      'react-native-maps',
+      {
+        iosGoogleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+      }
+    ]
   ],
   experiments: {
     typedRoutes: true

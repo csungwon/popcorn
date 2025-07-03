@@ -39,8 +39,6 @@ export async function getNearbyProducts(req: Request, res: Response) {
     store: { $in: nearbyStoreIds }
   }).populate('store').populate({ path: 'poster', select: 'firstName lastName' })
 
-  console.log(products.map(product => product.poster))
-
   return res.status(200).json(products.map((product) => product.toJSON()))
 }
 
