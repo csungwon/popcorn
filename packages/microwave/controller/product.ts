@@ -57,3 +57,23 @@ export async function getProductByStore(req: Request, res: Response) {
 
   return res.status(200).json(products.map((product) => product.toJSON()))
 }
+
+export async function getProductById(req: Request, res: Response) {
+  const { productId } = req.params
+
+  if (!productId || typeof productId !== 'string') {
+    return res
+      .status(400)
+      .json({ error: 'invalid productId provided'})
+  }
+
+  const product = await Product.findById(productId)
+    .populate('store')
+    .populate({ path: 'poster', select: 'firstName lastName' })
+
+  if (!product) {
+    return res.status(404).json({ error: 'Product not found' })
+  }
+
+  return res.status(200).json(product.toJSON())
+}

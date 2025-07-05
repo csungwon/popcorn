@@ -4,7 +4,7 @@ export default function ProductLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" options={{ title: 'Product Search' }} />
-      <Stack.Screen name="product" options={{ title: 'Product Details' }} />
+      <Stack.Screen name="product/[productId]" options={{ title: 'Product Details' }} />
     </Stack>
   )
 }
