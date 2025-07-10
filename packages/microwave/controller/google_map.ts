@@ -1,7 +1,7 @@
 import { PlacesClient, protos } from '@googlemaps/places'
 import { Request, Response } from 'express'
 import { GOOGLE_MAP_NEARBY_SEARCH_CONFIG } from '../const/google_map'
-import { Store, StoreType } from '../db/model'
+import { Product, Store, StoreType } from '../db/model'
 
 const placesClient = new PlacesClient({
   apiKey: process.env.GOOGLE_MAP_API_KEY
@@ -14,7 +14,7 @@ type GooglePlace = protos.google.maps.places.v1.Place
 // and then it'll be matched to the stores registered in the db
 // if the store does not exist in our database, new ones will be created
 export const GetNearbyGroceryStores = async (req: Request, res: Response) => {
-  const { lat, lng } = req.query
+  const { lat, lng, query } = req.query
 
   if (!lat || !lng) {
     return res
@@ -88,7 +88,19 @@ export const GetNearbyGroceryStores = async (req: Request, res: Response) => {
     const newStores = await Store.insertMany(storesToCreate)
 
     // merge existing stores with the newly created stores
-    const result = [...existingStores, ...newStores]
+    let result = [...existingStores, ...newStores]
+
+    // if query is provided, filter the stores that have products with the query
+    if (query && typeof query === 'string' && query.trim()) {
+      const regexQuery = new RegExp(decodeURIComponent(query), 'i')
+      // filter existing stores that have products matching the query
+      const storeIdsWithProduct = await Product.find({ name: regexQuery }).select('store').distinct('store')
+      const storeIdsWithProductSet = new Set(storeIdsWithProduct.map(id => id.toString()))
+
+      result = result.filter(store => storeIdsWithProductSet.has(store._id.toString()))
+    }
+
+
     // sort by the order returned by the google result
     result.sort(
       (a, b) =>

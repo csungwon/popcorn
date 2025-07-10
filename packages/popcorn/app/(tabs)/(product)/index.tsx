@@ -1,5 +1,6 @@
 import StoreChip from '@/components/StoreChip'
 import { useUserLocation } from '@/context/UserLocation'
+import { useDebounce } from '@/hooks/useDebounce'
 import { calculateDistance } from '@/utils/calculateDistance'
 import microwaveAxiosInstance from '@/utils/microwaveAxios'
 import GorhomBottomSheet, {
@@ -14,7 +15,7 @@ import { Image, ImageSource } from 'expo-image'
 import { Link } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
 import { cssInterop } from 'nativewind'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { ComponentRef, useEffect, useMemo, useRef, useState } from 'react'
 import {
   FlatList,
   Keyboard,
@@ -81,9 +82,15 @@ type Product = {
   createdAt: string
 }
 
+type SearchSuggestion = {
+  stores: string[]
+  products: string[]
+}
+
 export default function SearchScreen() {
   const { userLocation } = useUserLocation()
   const [search, setSearch] = useState<string>('')
+  const debouncedSearch = useDebounce(search, 200)
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
   const [storeFilter, setStoreFilter] = useState<string | null>(null)
   const [isSearchInputFocused, setIsSearchInputFocused] =
@@ -91,6 +98,7 @@ export default function SearchScreen() {
   const tabBarHeight = useBottomTabBarHeight()
   const mapViewRef = useRef<MapView>(null)
   const nearbyStoreListRef = useRef<FlatList>(null)
+  const searchInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null)
   const [isBottomSheetExpanded, setIsBottomSheetExpanded] =
     useState<boolean>(false)
 
@@ -99,14 +107,19 @@ export default function SearchScreen() {
 
   const { data: nearbyStores = [], isSuccess: isNearbyStoresSuccess } =
     useQuery({
-      queryKey: ['nearbyStores', userLatitude, userLongitude],
+      queryKey: ['nearbyStores', userLatitude, userLongitude, debouncedSearch],
       queryFn: async (): Promise<Store[]> => {
+        const queryParams = new URLSearchParams({
+          lat: userLatitude.toString(),
+          lng: userLongitude.toString(),
+          query: debouncedSearch
+        })
         const response = await microwaveAxiosInstance.get(
-          `/api/v1/nearby_stores?lat=${userLatitude}&lng=${userLongitude}`
+          `/api/v1/nearby_stores?${queryParams.toString()}`
         )
         return response.data
       },
-      enabled: !!(userLatitude && userLongitude)
+      enabled: !!(userLatitude && userLongitude && !isSearchInputFocused)
     })
 
   const storesToShow = useMemo(() => {
@@ -157,10 +170,15 @@ export default function SearchScreen() {
 
   const { data: nearbyProducts, isSuccess: isNearbyProductsSuccess } = useQuery(
     {
-      queryKey: ['nearbyProducts', userLatitude, userLongitude],
+      queryKey: ['nearbyProducts', userLatitude, userLongitude, debouncedSearch],
       queryFn: async (): Promise<Product[]> => {
+        const queryParams = new URLSearchParams({
+          lat: userLatitude.toString(),
+          lng: userLongitude.toString(),
+          query: debouncedSearch
+        })
         const response = await microwaveAxiosInstance.get(
-          `/api/v1/product?lat=${userLatitude}&lng=${userLongitude}`
+          `/api/v1/product?${queryParams.toString()}`
         )
         return response.data
       },
@@ -203,6 +221,19 @@ export default function SearchScreen() {
       })
     }
   }
+
+  // fetch search suggestions based on the current search input
+  const { data: searchSuggestions, isSuccess: isSearchSuggestionsSuccess } =
+    useQuery({
+      queryKey: ['searchSuggestions', debouncedSearch],
+      queryFn: async (): Promise<SearchSuggestion> => {
+        const response = await microwaveAxiosInstance.get(
+          `/api/v1/search/suggestions?query=${encodeURIComponent(debouncedSearch)}`
+        )
+        return response.data
+      },
+      enabled: !!debouncedSearch
+    })
 
   return (
     <>
@@ -293,18 +324,38 @@ export default function SearchScreen() {
               isSearchInputFocused && 'bg-gray-100'
             )}
           >
-            <View className="absolute left-2">
-              <SymbolView
-                name="magnifyingglass"
-                tintColor="#3c3c4399"
-                type="monochrome"
-              />
+            <View className="absolute left-2 z-10">
+              {isSearchInputFocused ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSearch('')
+                    // manually blur the input as BottomSheet does not handle it very well
+                    searchInputRef.current?.blur()
+                  }}
+                >
+                  <SymbolView
+                    name="chevron.left"
+                    tintColor="#3c3c4399"
+                    type="monochrome"
+                    size={20}
+                  />
+                </TouchableOpacity>
+              ) : (
+                <SymbolView
+                  name="magnifyingglass"
+                  tintColor="#3c3c4399"
+                  type="monochrome"
+                  size={20}
+                />
+              )}
             </View>
             <BottomSheetTextInput
+              ref={searchInputRef}
               placeholder="Search"
               className="p-2 pl-9 flex-1 text-lg leading-tight placeholder:text-gray-800/60"
               value={search}
               onChangeText={setSearch}
+              returnKeyType="search"
               onFocus={() => setIsSearchInputFocused(true)}
               onBlur={() => setIsSearchInputFocused(false)}
             />
@@ -340,11 +391,13 @@ export default function SearchScreen() {
               </TouchableOpacity>
             )}
           />
-          {/* Recent Searches */}
-          {recentSearches.length > 0 &&
-            isSearchInputFocused &&
-            !search.length && (
-              <View className="mt-4">
+        </BottomSheetView>
+
+        {isSearchInputFocused ? (
+          <>
+            {/* Recent Searches */}
+            {recentSearches.length > 0 && !search.length && (
+              <View className="px-4 mt-1">
                 <Text className="text-lg">Recent Searches</Text>
                 <View className="mt-2">
                   {recentSearches
@@ -357,7 +410,11 @@ export default function SearchScreen() {
                     .map(({ search }) => (
                       <TouchableOpacity
                         key={search}
-                        onPress={() => setSearch(search)}
+                        onPress={() => {
+                          setSearch(search)
+                          // manually blur the input as BottomSheet does not handle it very well
+                          searchInputRef.current?.blur()
+                        }}
                       >
                         <View className="flex flex-row items-center gap-1 py-1">
                           <SymbolView
@@ -374,97 +431,145 @@ export default function SearchScreen() {
                 </View>
               </View>
             )}
-        </BottomSheetView>
-        {/* Nearby products */}
-        {selectedStore && (
-          <View className="px-4 pt-2 pb-3">
-            <View className="flex-row items-center gap-1">
-              <Text className="text-lg">{selectedStore.name}</Text>
-              <View className="w-1 h-1 rounded-full bg-gray-400"></View>
-              <Text>
-                {calculateDistance(
-                  {
-                    latitude: userLatitude,
-                    longitude: userLongitude
-                  },
-                  selectedStore.location
-                )}
-                mi
-              </Text>
-            </View>
-            <Text className="mt-0.5 text-xs text-gray-500">{selectedStore.address}</Text>
-          </View>
-        )}
-        {isNearbyProductsSuccess && (
-          <BottomSheetScrollView
-            className="px-4 gap-6"
-            showsVerticalScrollIndicator={false}
-          >
-            {productsToShow.map((product: any) => {
-              return (
-                <Link key={product._id} href={`/product/${product._id}`}>
-                  <View
-                    className="border-b border-gray-100 w-full"
+
+            {/* Search Suggestions */}
+            {search.length > 0 && isSearchSuggestionsSuccess && (
+              <View className="px-4 pt-1">
+                {searchSuggestions.products.map((product) => (
+                  <TouchableOpacity
+                    key={product}
+                    onPress={() => {
+                      setSearch(product)
+                      // manually blur the input as BottomSheet does not handle it very well
+                      searchInputRef.current?.blur()
+                    }}
                   >
-                    <View className="flex-row gap-3 py-4">
-                      <View className="flex-row w-[90] h-[90] rounded-md bg-gray-100 grid place-items-center">
-                        <Image source={product.image} className="w-full h-full" />
+                    <View className="flex flex-row justify-between items-center">
+                      <View className="flex flex-row items-center gap-2.5">
+                        <SymbolView
+                          name="magnifyingglass.circle.fill"
+                          tintColor="#707070"
+                          type="monochrome"
+                          size={28}
+                        />
+                        <Text className="text-lg text-gray-800">{product}</Text>
                       </View>
-                      <View className="gap-1 grow">
-                        <View className="flex-row gap-1 items-center">
-                          <Image
-                            className="w-[22] h-[22] rounded-full border border-gray-200"
-                            source={product.store.iconUrl}
-                            contentFit="contain"
-                          />
-                          <View className="flex-row items-center gap-1">
-                            <Text className="text-sm text-gray-500">
-                              {product.store.name}
-                            </Text>
-                            <View className="w-1 h-1 rounded-full bg-gray-500"></View>
-                            <Text className="text-sm text-gray-500">
-                              {calculateDistance(
-                                {
-                                  latitude: userLatitude,
-                                  longitude: userLongitude
-                                },
-                                product.store.location
-                              )}
-                              mi
-                            </Text>
-                          </View>
-                        </View>
-                        <Text className="text-xl text-black">
-                          {product.price.currencyCode === 'USD' ? '$' : ''}
-                          {product.price.amount}
-                        </Text>
-                        <Text className="text-base text-black">
-                          {product.quantity.value}
-                          {product.quantity.unit} {product.name}
-                        </Text>
-                        <View className="mt-4 w-full rounded-full px-2.5 py-1 flex-row items-center border border-gray-200">
-                          <View className="flex-row gap-1 items-center">
-                            <SymbolView
-                              name="person.circle"
-                              size={18}
-                              tintColor="#000"
-                            />
-                            <Text>
-                              {product.poster.firstName} {product.poster.lastName}
-                            </Text>
-                          </View>
-                          <View className="absolute right-0 py-1 px-3 border border-gray-200 flex-row rounded-full gap-1.5">
-                            <SymbolView name="heart" size={18} tintColor="#000" />
-                            <Text>{product.likedUsers.length || 0}</Text>
-                          </View>
-                        </View>
+                      <View>
+                        <SymbolView
+                          name="arrow.up.left"
+                          tintColor="#707070"
+                          type="monochrome"
+                          size={20}
+                        />
                       </View>
                     </View>
-                  </View>
-                </Link>
-              )
-            })}
-          </BottomSheetScrollView>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Nearby products */}
+            {selectedStore && (
+              <View className="px-4 pt-2 pb-3">
+                <View className="flex-row items-center gap-1">
+                  <Text className="text-lg">{selectedStore.name}</Text>
+                  <View className="w-1 h-1 rounded-full bg-gray-400"></View>
+                  <Text>
+                    {calculateDistance(
+                      {
+                        latitude: userLatitude,
+                        longitude: userLongitude
+                      },
+                      selectedStore.location
+                    )}
+                    mi
+                  </Text>
+                </View>
+                <Text className="mt-0.5 text-xs text-gray-500">
+                  {selectedStore.address}
+                </Text>
+              </View>
+            )}
+            {isNearbyProductsSuccess && (
+              <BottomSheetScrollView
+                className="px-4 gap-6"
+                showsVerticalScrollIndicator={false}
+              >
+                {productsToShow.map((product: any) => {
+                  return (
+                    <Link key={product._id} href={`/product/${product._id}`}>
+                      <View className="border-b border-gray-100 w-full">
+                        <View className="flex-row gap-3 py-4">
+                          <View className="flex-row w-[90] h-[90] rounded-md bg-gray-100 grid place-items-center">
+                            <Image
+                              source={product.image}
+                              className="w-full h-full"
+                            />
+                          </View>
+                          <View className="gap-1 grow">
+                            <View className="flex-row gap-1 items-center">
+                              <Image
+                                className="w-[22] h-[22] rounded-full border border-gray-200"
+                                source={product.store.iconUrl}
+                                contentFit="contain"
+                              />
+                              <View className="flex-row items-center gap-1">
+                                <Text className="text-sm text-gray-500">
+                                  {product.store.name}
+                                </Text>
+                                <View className="w-1 h-1 rounded-full bg-gray-500"></View>
+                                <Text className="text-sm text-gray-500">
+                                  {calculateDistance(
+                                    {
+                                      latitude: userLatitude,
+                                      longitude: userLongitude
+                                    },
+                                    product.store.location
+                                  )}
+                                  mi
+                                </Text>
+                              </View>
+                            </View>
+                            <Text className="text-xl text-black">
+                              {product.price.currencyCode === 'USD' ? '$' : ''}
+                              {product.price.amount}
+                            </Text>
+                            <Text className="text-base text-black">
+                              {product.quantity.value}
+                              {product.quantity.unit} {product.name}
+                            </Text>
+                            <View className="mt-4 w-full rounded-full px-2.5 py-1 flex-row items-center border border-gray-200">
+                              <View className="flex-row gap-1 items-center">
+                                <SymbolView
+                                  name="person.circle"
+                                  size={18}
+                                  tintColor="#000"
+                                />
+                                <Text>
+                                  {product.poster.firstName}{' '}
+                                  {product.poster.lastName}
+                                </Text>
+                              </View>
+                              <View className="absolute right-0 py-1 px-3 border border-gray-200 flex-row rounded-full gap-1.5">
+                                <SymbolView
+                                  name="heart"
+                                  size={18}
+                                  tintColor="#000"
+                                />
+                                <Text>{product.likedUsers.length || 0}</Text>
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    </Link>
+                  )
+                })}
+              </BottomSheetScrollView>
+            )}
+          </>
         )}
       </BottomSheet>
     </>

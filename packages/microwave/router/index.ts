@@ -3,6 +3,7 @@ import express from "express";
 import { GoogleMapController, jwtController } from "../controller";
 import authRouter from "./auth";
 import productRouter from './product';
+import searchRouter from './search';
 
 const router = express.Router();
 
@@ -24,5 +25,8 @@ router.get("/api/v1/nearby_stores", (req, res, next) => {
 
 // products
 router.use('/api/v1/product', productRouter)
+
+// search
+router.use("/api/v1/search", searchRouter)
 
 export default router;

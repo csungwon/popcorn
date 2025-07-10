@@ -8,7 +8,8 @@ export async function getNearbyProducts(req: Request, res: Response) {
   const {
     lat,
     lng,
-    distance = GOOGLE_MAP_NEARBY_SEARCH_CONFIG.RADIUS_METER
+    distance = GOOGLE_MAP_NEARBY_SEARCH_CONFIG.RADIUS_METER,
+    query
   } = req.query
 
   if (!lat || !lng) {
@@ -35,9 +36,17 @@ export async function getNearbyProducts(req: Request, res: Response) {
 
   // get products in the nearby stores
   const nearbyStoreIds = stores.map((store) => store._id)
-  const products = await Product.find({
+  let productsQuery = Product.find({
     store: { $in: nearbyStoreIds }
   }).populate('store').populate({ path: 'poster', select: 'firstName lastName' })
+
+  if (query && typeof query === 'string' && query.trim()) {
+    const regexQuery = new RegExp(decodeURIComponent(query), 'i')
+    // filter products that match the query
+    productsQuery = productsQuery.find({ name: regexQuery })
+  }
+
+  const products = await productsQuery.exec()
 
   return res.status(200).json(products.map((product) => product.toJSON()))
 }
