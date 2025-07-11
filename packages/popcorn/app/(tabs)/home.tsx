@@ -14,16 +14,12 @@ export default function HomeScreen() {
     <SafeAreaView className="px-4 py-8 absolute inset-0 bg-white">
       <Text className="text-5xl">Dev Page</Text>
       <View className="flex flex-col gap-4 mt-8">
-        <Button
-          type="secondary"
-          label="Sign out"
-          onPress={signOut}
-        />
+        <Button type="secondary" label="Sign out" onPress={signOut} />
         <Button
           type="secondary"
           label="Reset onboarding"
           onPress={() => {
-            AsyncStorage.clear()
+            AsyncStorage.removeItem('@onboardingComplete')
             router.replace('/onboarding')
           }}
         />
@@ -32,6 +28,13 @@ export default function HomeScreen() {
           label="Go to Sign in page"
           onPress={() => {
             router.push('/signin')
+          }}
+        />
+        <Button
+          type="secondary"
+          label="Reset recent searches"
+          onPress={() => {
+            AsyncStorage.removeItem('@recentSearches')
           }}
         />
       </View>

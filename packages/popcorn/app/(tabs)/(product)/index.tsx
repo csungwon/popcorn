@@ -1,5 +1,6 @@
 import StoreChip from '@/components/StoreChip'
 import { useUserLocation } from '@/context/UserLocation'
+import useAsyncStorage from '@/hooks/useAsyncStorage'
 import { useDebounce } from '@/hooks/useDebounce'
 import { calculateDistance } from '@/utils/calculateDistance'
 import microwaveAxiosInstance from '@/utils/microwaveAxios'
@@ -15,7 +16,14 @@ import { Image, ImageSource } from 'expo-image'
 import { Link } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
 import { cssInterop } from 'nativewind'
-import { ComponentRef, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ComponentRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 import {
   FlatList,
   Keyboard,
@@ -24,6 +32,7 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native'
+import { ScrollView } from 'react-native-gesture-handler'
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'
 
 // Configure nativewind to work with @gorhom/bottom-sheet
@@ -31,21 +40,6 @@ const BottomSheet = cssInterop(GorhomBottomSheet, {
   className: 'style',
   handleIndicatorClassName: 'handleIndicatorStyle'
 })
-
-const recentSearches = [
-  {
-    search: 'Banana',
-    searchedAt: '2023-10-01T12:00:00Z'
-  },
-  {
-    search: 'Apple',
-    searchedAt: '2023-10-01T13:00:00Z'
-  },
-  {
-    search: 'Orange',
-    searchedAt: '2023-10-01T15:00:00Z'
-  }
-]
 
 // return type of the API response
 // TODO: share the type from the microwave package
@@ -87,6 +81,11 @@ type SearchSuggestion = {
   products: string[]
 }
 
+type RecentSearch = {
+  search: string
+  searchedAt: string
+}
+
 export default function SearchScreen() {
   const { userLocation } = useUserLocation()
   const [search, setSearch] = useState<string>('')
@@ -101,6 +100,55 @@ export default function SearchScreen() {
   const searchInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null)
   const [isBottomSheetExpanded, setIsBottomSheetExpanded] =
     useState<boolean>(false)
+  const {
+    value: recentSearchesString,
+    isLoading: isRecentSearchesLoading,
+    setItem: setRecentSearches
+  } = useAsyncStorage('@recentSearches')
+
+  const recentSearches: RecentSearch[] = useMemo(() => {
+    // if loading or the value in async storage is falsy, return empty array
+    if (isRecentSearchesLoading || !recentSearchesString) {
+      return []
+    }
+
+    try {
+      const parsedRecentSearches = JSON.parse(recentSearchesString)
+      if (!Array.isArray(parsedRecentSearches)) {
+        throw new Error('Invalid recent searches format')
+      }
+      return parsedRecentSearches
+    } catch (error) {
+      // this will catch either JSON.parse error or the error from Array.isArray check
+      console.error(
+        'malformed recent searches from AsyncStorage. Resetting the async storage'
+      )
+      setRecentSearches('[]')
+    }
+    return []
+  }, [recentSearchesString, isRecentSearchesLoading])
+
+  const registerRecentSearch = useCallback(
+    (search: string) => {
+      const newSearches = [...recentSearches]
+
+      // if there already exists a search, update the searchedAt
+      const existingSearchIndex = newSearches.findIndex(
+        (s) => s.search === search
+      )
+      if (existingSearchIndex !== -1) {
+        newSearches.splice(existingSearchIndex, 1, {
+          ...newSearches[existingSearchIndex],
+          searchedAt: new Date().toISOString()
+        })
+      } else {
+        newSearches.push({ search, searchedAt: new Date().toISOString() })
+      }
+
+      setRecentSearches(JSON.stringify(newSearches))
+    },
+    [recentSearches]
+  )
 
   const userLatitude = userLocation.coords.latitude
   const userLongitude = userLocation.coords.longitude
@@ -170,7 +218,12 @@ export default function SearchScreen() {
 
   const { data: nearbyProducts, isSuccess: isNearbyProductsSuccess } = useQuery(
     {
-      queryKey: ['nearbyProducts', userLatitude, userLongitude, debouncedSearch],
+      queryKey: [
+        'nearbyProducts',
+        userLatitude,
+        userLongitude,
+        debouncedSearch
+      ],
       queryFn: async (): Promise<Product[]> => {
         const queryParams = new URLSearchParams({
           lat: userLatitude.toString(),
@@ -355,9 +408,16 @@ export default function SearchScreen() {
               className="p-2 pl-9 flex-1 text-lg leading-tight placeholder:text-gray-800/60"
               value={search}
               onChangeText={setSearch}
+              onSubmitEditing={() => {
+                registerRecentSearch(search)
+              }}
               returnKeyType="search"
               onFocus={() => setIsSearchInputFocused(true)}
               onBlur={() => setIsSearchInputFocused(false)}
+              autoCorrect={false}
+              spellCheck={false}
+              autoCapitalize='none'
+              autoComplete='off'
             />
             {search.length > 0 && (
               <TouchableOpacity
@@ -396,41 +456,43 @@ export default function SearchScreen() {
         {isSearchInputFocused ? (
           <>
             {/* Recent Searches */}
-            {recentSearches.length > 0 && !search.length && (
-              <View className="px-4 mt-1">
-                <Text className="text-lg">Recent Searches</Text>
-                <View className="mt-2">
-                  {recentSearches
-                    .slice()
-                    .sort(
-                      (s1, s2) =>
-                        new Date(s1.searchedAt).getTime() -
-                        new Date(s2.searchedAt).getTime()
-                    )
-                    .map(({ search }) => (
-                      <TouchableOpacity
-                        key={search}
-                        onPress={() => {
-                          setSearch(search)
-                          // manually blur the input as BottomSheet does not handle it very well
-                          searchInputRef.current?.blur()
-                        }}
-                      >
-                        <View className="flex flex-row items-center gap-1 py-1">
-                          <SymbolView
-                            name="clock.arrow.circlepath"
-                            tintColor="#707070"
-                            type="monochrome"
-                          />
-                          <Text className="text-lg text-gray-800">
-                            {search}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
+            {!isRecentSearchesLoading &&
+              recentSearches.length > 0 &&
+              !search.length && (
+                <View className="px-4 mt-1">
+                  <Text className="text-lg">Recent Searches</Text>
+                  <ScrollView className="mt-2">
+                    {recentSearches
+                      .slice()
+                      .sort(
+                        (s1, s2) =>
+                          new Date(s2.searchedAt).getTime() -
+                          new Date(s1.searchedAt).getTime()
+                      )
+                      .map(({ search, searchedAt }) => (
+                        <TouchableOpacity
+                          key={`${search}-${searchedAt}`}
+                          onPress={() => {
+                            setSearch(search)
+                            // manually blur the input as BottomSheet does not handle it very well
+                            searchInputRef.current?.blur()
+                          }}
+                        >
+                          <View className="flex flex-row items-center gap-1 py-1">
+                            <SymbolView
+                              name="clock.arrow.circlepath"
+                              tintColor="#707070"
+                              type="monochrome"
+                            />
+                            <Text className="text-lg text-gray-800">
+                              {search}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                  </ScrollView>
                 </View>
-              </View>
-            )}
+              )}
 
             {/* Search Suggestions */}
             {search.length > 0 && isSearchSuggestionsSuccess && (
@@ -440,6 +502,7 @@ export default function SearchScreen() {
                     key={product}
                     onPress={() => {
                       setSearch(product)
+                      registerRecentSearch(product)
                       // manually blur the input as BottomSheet does not handle it very well
                       searchInputRef.current?.blur()
                     }}
